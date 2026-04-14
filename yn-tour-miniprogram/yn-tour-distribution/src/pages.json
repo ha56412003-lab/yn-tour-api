@@ -1,0 +1,163 @@
+{
+	"pages": [
+		{
+			"path": "pages/home/home",
+			"style": {
+				"navigationBarTitleText": "云南旅游",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/cps/cps",
+			"style": {
+				"navigationBarTitleText": "CPS优惠",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/join/join",
+			"style": {
+				"navigationBarTitleText": "加入团游",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/share/share",
+			"style": {
+				"navigationBarTitleText": "分享机会",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/help/help",
+			"style": {
+				"navigationBarTitleText": "帮助文档",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/booking/booking",
+			"style": {
+				"navigationBarTitleText": "预约出行",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/user",
+			"style": {
+				"navigationBarTitleText": "个人中心",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/product/product",
+			"style": {
+				"navigationBarTitleText": "商品详情"
+			}
+		},
+		{
+			"path": "pages/team/team",
+			"style": {
+				"navigationBarTitleText": "团队排行"
+			}
+		},
+		{
+			"path": "pages/ranking/ranking",
+			"style": {
+				"navigationBarTitleText": "排行榜"
+			}
+		},
+		{
+			"path": "pages/order/order",
+			"style": {
+				"navigationBarTitleText": "我的订单"
+			}
+		},
+		{
+			"path": "pages/import/import",
+			"style": {
+				"navigationBarTitleText": "导入成为分销商"
+			}
+		},
+		{
+			"path": "pages/webview/webview",
+			"style": {
+				"navigationBarTitleText": "正在加载"
+			}
+		},
+		{
+			"path": "pages/cps/channels/hotel",
+			"style": {
+				"navigationBarTitleText": "酒店民宿"
+			}
+		},
+		{
+			"path": "pages/cps/channels/oil",
+			"style": {
+				"navigationBarTitleText": "加油优惠"
+			}
+		},
+		{
+			"path": "pages/cps/channels/meituan",
+			"style": {
+				"navigationBarTitleText": "美团外卖"
+			}
+		},
+		{
+			"path": "pages/cps/channels/elem",
+			"style": {
+				"navigationBarTitleText": "饿了么"
+			}
+		},
+		{
+			"path": "pages/cps/channels/movie",
+			"style": {
+				"navigationBarTitleText": "电影票"
+			}
+		},
+		{
+			"path": "pages/cps/channels/taxi",
+			"style": {
+				"navigationBarTitleText": "出行打车"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "云南旅游",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	},
+	"tabBar": {
+		"color": "#999999",
+		"selectedColor": "#FF6B6B",
+		"borderStyle": "white",
+		"backgroundColor": "#FFFFFF",
+		"list": [
+			{
+				"pagePath": "pages/home/home",
+				"iconPath": "static/tab-home.png",
+				"selectedIconPath": "static/tab-home-active.png",
+				"text": "首页"
+			},
+			{
+				"pagePath": "pages/help/help",
+				"iconPath": "static/tab-help.png",
+				"selectedIconPath": "static/tab-help-active.png",
+				"text": "帮助"
+			},
+			{
+				"pagePath": "pages/booking/booking",
+				"iconPath": "static/tab-booking.png",
+				"selectedIconPath": "static/tab-booking-active.png",
+				"text": "预约"
+			},
+			{
+				"pagePath": "pages/user/user",
+				"iconPath": "static/tab-user.png",
+				"selectedIconPath": "static/tab-user-active.png",
+				"text": "我的"
+			}
+		]
+	}
+}

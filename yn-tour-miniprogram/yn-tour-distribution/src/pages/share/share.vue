@@ -651,9 +651,11 @@ page { height: 100%; overflow: hidden; }
 .header-info { display: flex; flex-direction: column; gap: 4rpx; }
 .header-title { font-size: 34rpx; font-weight: bold; color: #fff; }
 .header-sub { font-size: 22rpx; color: rgba(255,255,255,0.7); }
-.close-btn { 
-  width: 52rpx; height: 52rpx; display: flex; align-items: center; justify-content: center; 
-  background: rgba(255,255,255,0.25); border-radius: 50%; color: #fff; font-size: 28rpx; 
+.close-btn {
+  position: fixed; top: 20rpx; left: 20rpx; z-index: 9999;
+  width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.45); border-radius: 50%; color: #fff; font-size: 30rpx;
+  /* 避开小程序原生右上角按钮 */
 }
 
 .modal-body { flex: 1; overflow-y: auto; padding: 24rpx; }
@@ -688,7 +690,7 @@ page { height: 100%; overflow: hidden; }
 .poster-preview {
   position: relative; width: 100%; border-radius: 16rpx; overflow: hidden; margin-bottom: 16rpx;
 }
-.poster-thumb { width: 100%; display: block; }
+.poster-thumb { width: 100%; height: auto; display: block; }
 .poster-hint { 
   position: absolute; bottom: 0; left: 0; right: 0;
   background: rgba(0,0,0,0.45); color: #fff; font-size: 22rpx;
