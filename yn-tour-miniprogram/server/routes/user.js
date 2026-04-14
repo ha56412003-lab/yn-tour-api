@@ -572,64 +572,57 @@ router.get('/poster-image', async (req, res) => {
 
     // =============================================
     // 第二步：绘制海报 (540 x 886 px)
-    // 海报组成：绿色背景 + 装饰几何色块 + 白色信息卡 + 居中二维码
+    // 海报组成：背景图 + 绿色半透明叠加层 + 装饰色块 + 居中二维码
     // =============================================
     const W = 540
     const H = 886
 
-    // 背景：深绿纯色
-    const poster = new Jimp({ width: W, height: H, color: 0xff0a6744 })
+    // 加载背景图
+    const bgDir = path.join(__dirname, '../uploads/backgrounds')
+    const bgFiles = fs.readdirSync(bgDir).filter(f => /\.(jpg|jpeg|png)$/i.test(f))
+    const bgFile = bgFiles[Math.floor(Math.random() * bgFiles.length)]
+    const bgPath = path.join(bgDir, bgFile)
+    const bgImage = await Jimp.read(bgPath)
+    bgImage.resize({ w: W, h: H })
+    const poster = bgImage
 
-    // 辅助函数：创建带圆形遮罩的半透明圆形装饰块
-    function makeCircle(size, color) {
-      const img = new Jimp({ width: size, height: size, color })
-      // 手动遮罩四个角为透明（不在 Jimp 原生支持，用对称原理画4个方块切角）
-      // 实际上 Jimp 没有 circle()，直接返回正方形，composite 时用 alpha 遮罩
-      img.setAlpha(200) // 半透明（0=完全透明，255=完全不透明）
-      return img
-    }
+    // 绿色半透明叠加层（让背景图变暗，绿一点）
+    const overlay = new Jimp({ width: W, height: H, color: 0x780a6744 })
+    poster.composite(overlay, 0, 0)
 
-    // 右上角装饰圆（用正方形模拟）
+    // 右上角装饰（半透明白色方块）
     const deco1 = new Jimp({ width: 280, height: 280, color: 0x10ffffff })
     poster.composite(deco1, W - 160, -70)
 
-    // 左下角装饰圆
+    // 左下角装饰
     const deco2 = new Jimp({ width: 180, height: 180, color: 0x08ffffff })
     poster.composite(deco2, -50, H - 130)
 
-    // 顶部装饰条（白条）
-    const strip = new Jimp({ width: 80, height: 6, color: 0x60ffffff })
+    // 顶部装饰条
+    const strip = new Jimp({ width: 80, height: 6, color: 0x50ffffff })
     poster.composite(strip, 44, 50)
 
-    // 主标题区域背景（半透明白色块模拟标题文字区）
-    const titleBg = new Jimp({ width: 300, height: 60, color: 0x20ffffff })
-    poster.composite(titleBg, (W - 300) / 2, 110)
-
-    // 副标题区域
-    const subBg = new Jimp({ width: 260, height: 36, color: 0x15ffffff })
-    poster.composite(subBg, (W - 260) / 2, 175)
-
-    // 价格标签（金色圆形背景，这里用正方形）
+    // 价格标签（金色方块）
     const priceBg = new Jimp({ width: 130, height: 130, color: 0xFFFFD700 })
-    poster.composite(priceBg, (W - 130) / 2, 225)
+    poster.composite(priceBg, (W - 130) / 2, 210)
 
-    // 用户信息卡（半透明白色矩形）
+    // 用户信息卡
     const cardBg = new Jimp({ width: W - 80, height: 88, color: 0x18ffffff })
     poster.composite(cardBg, 40, 380)
 
-    // 昵称区域（白色小块）
-    const nameBg = new Jimp({ width: 140, height: 30, color: 0xe0ffffff })
+    // 昵称区域
+    const nameBg = new Jimp({ width: 140, height: 30, color: 0xd0ffffff })
     poster.composite(nameBg, 135, 390)
 
-    // 认证标签背景（金色小块）
-    const badgeBg = new Jimp({ width: 110, height: 26, color: 0xccFFD700 })
+    // 认证标签背景
+    const badgeBg = new Jimp({ width: 110, height: 26, color: 0xbbFFD700 })
     poster.composite(badgeBg, 135, 428)
 
     // 分割线
-    const line = new Jimp({ width: W - 80, height: 2, color: 0x35ffffff })
+    const line = new Jimp({ width: W - 80, height: 2, color: 0x30ffffff })
     poster.composite(line, 40, 495)
 
-    // 引导文案区域（半透明背景）
+    // 引导文案区域背景
     const guideBg = new Jimp({ width: 240, height: 60, color: 0x12ffffff })
     poster.composite(guideBg, (W - 240) / 2, 500)
 
