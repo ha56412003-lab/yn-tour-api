@@ -627,19 +627,21 @@ router.get('/poster-image', async (req, res) => {
     poster.composite(guideBg, (W - 240) / 2, 500)
 
     // =============================================
-    // 第三步：叠加二维码（居中底部）
+    // 第三步：叠加二维码（右下角）
     // =============================================
     const qrImage = await Jimp.read(wxBuffer)
-    const qrSize = 160
+    const qrSize = 100
     qrImage.resize({ w: qrSize, h: qrSize })
 
-    // 二维码白色背景（带圆角感，用正方形）
-    const qrBgSize = qrSize + 16
+    // 二维码白色背景（右下角，30px边距）
+    const qrBgSize = qrSize + 20
     const qrBg = new Jimp({ width: qrBgSize, height: qrBgSize, color: 0xFFFFFFFF })
-    poster.composite(qrBg, (W - qrBgSize) / 2, 575)
+    const qrX = W - qrBgSize - 30  // 390
+    const qrY = H - qrBgSize - 30  // 736
+    poster.composite(qrBg, qrX, qrY)
 
     // 二维码本体（居中于白框）
-    poster.composite(qrImage, (W - qrSize) / 2, 583)
+    poster.composite(qrImage, qrX + 10, qrY + 10)
 
     // =============================================
     // 第四步：保存
