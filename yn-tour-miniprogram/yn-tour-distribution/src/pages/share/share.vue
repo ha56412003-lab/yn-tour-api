@@ -58,9 +58,8 @@
           <!-- 海报预览卡片 -->
           <view class="poster-card">
             <!-- 海报已生成：显示缩略图 -->
-            <view v-if="posterUrl" class="poster-preview" @click="previewPoster">
+            <view v-if="posterUrl" class="poster-preview">
               <image class="poster-thumb" :src="posterUrl" mode="widthFix" style="width:540px;height:886px;" />
-              <view class="poster-hint">点击放大预览</view>
             </view>
             
             <!-- 海报未生成：只显示小按钮 -->
