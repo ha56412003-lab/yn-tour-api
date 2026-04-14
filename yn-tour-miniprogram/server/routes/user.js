@@ -572,7 +572,7 @@ router.get('/poster-image', async (req, res) => {
 
     // =============================================
     // 第二步：绘制海报 (540 x 886 px)
-    // 海报组成：背景图 + 绿色半透明叠加层 + 装饰色块 + 居中二维码
+    // 海报组成：背景图 + 淡绿色叠加层 + 右下角二维码
     // =============================================
     const W = 540
     const H = 886
@@ -586,45 +586,9 @@ router.get('/poster-image', async (req, res) => {
     bgImage.resize({ w: W, h: H })
     const poster = bgImage
 
-    // 绿色半透明叠加层（让背景图变暗，绿一点）
-    const overlay = new Jimp({ width: W, height: H, color: 0x780a6744 })
+    // 淡绿色叠加层（轻微调色，不遮挡背景）
+    const overlay = new Jimp({ width: W, height: H, color: 0x300a6744 })
     poster.composite(overlay, 0, 0)
-
-    // 右上角装饰（半透明白色方块）
-    const deco1 = new Jimp({ width: 280, height: 280, color: 0x10ffffff })
-    poster.composite(deco1, W - 160, -70)
-
-    // 左下角装饰
-    const deco2 = new Jimp({ width: 180, height: 180, color: 0x08ffffff })
-    poster.composite(deco2, -50, H - 130)
-
-    // 顶部装饰条
-    const strip = new Jimp({ width: 80, height: 6, color: 0x50ffffff })
-    poster.composite(strip, 44, 50)
-
-    // 价格标签（金色方块）
-    const priceBg = new Jimp({ width: 130, height: 130, color: 0xFFFFD700 })
-    poster.composite(priceBg, (W - 130) / 2, 210)
-
-    // 用户信息卡
-    const cardBg = new Jimp({ width: W - 80, height: 88, color: 0x18ffffff })
-    poster.composite(cardBg, 40, 380)
-
-    // 昵称区域
-    const nameBg = new Jimp({ width: 140, height: 30, color: 0xd0ffffff })
-    poster.composite(nameBg, 135, 390)
-
-    // 认证标签背景
-    const badgeBg = new Jimp({ width: 110, height: 26, color: 0xbbFFD700 })
-    poster.composite(badgeBg, 135, 428)
-
-    // 分割线
-    const line = new Jimp({ width: W - 80, height: 2, color: 0x30ffffff })
-    poster.composite(line, 40, 495)
-
-    // 引导文案区域背景
-    const guideBg = new Jimp({ width: 240, height: 60, color: 0x12ffffff })
-    poster.composite(guideBg, (W - 240) / 2, 500)
 
     // =============================================
     // 第三步：叠加二维码（右下角）

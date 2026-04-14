@@ -59,7 +59,7 @@
           <view class="poster-card">
             <!-- 海报已生成：显示缩略图 -->
             <view v-if="posterUrl" class="poster-preview">
-              <image class="poster-thumb" :src="posterUrl" mode="widthFix" style="width:540px;height:886px;" />
+              <image class="poster-thumb" :src="posterUrl" mode="aspectFit" />
             </view>
             
             <!-- 海报未生成：只显示小按钮 -->
@@ -688,7 +688,7 @@ page { height: 100%; overflow: hidden; }
 .poster-preview {
   position: relative; width: 100%; border-radius: 16rpx; overflow: hidden; margin-bottom: 16rpx;
 }
-.poster-thumb { display: block; }
+.poster-thumb { width: 100%; display: block; }
 .poster-hint { 
   position: absolute; bottom: 0; left: 0; right: 0;
   background: rgba(0,0,0,0.45); color: #fff; font-size: 22rpx;
