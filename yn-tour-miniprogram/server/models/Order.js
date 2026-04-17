@@ -71,6 +71,23 @@ const orderSchema = new mongoose.Schema({
     level2DistributorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     settled: { type: Boolean, default: false } // 是否已结算
   },
+  // 退款相关
+  refundStatus: {
+    type: String,
+    enum: ['none', 'applying', 'approved', 'rejected'],
+    default: 'none'
+  },
+  refundApplyTime: { type: Date },
+  refundReason: { type: String },
+  refundRemark: { type: String },
+  refundAdminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  refundProcessedAt: { type: Date },
+  // 佣金状态: frozen-冻结(退款保护期), released-已解冻, clawed_back-已追回
+  commissionStatus: {
+    type: String,
+    enum: ['frozen', 'released', 'clawed_back'],
+    default: 'frozen'
+  },
   // 备注
   remark: { type: String },
   createdAt: { type: Date, default: Date.now },

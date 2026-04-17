@@ -17,12 +17,16 @@ const commissionSchema = new mongoose.Schema({
   relatedUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   // 分销层级
   level: { type: Number }, // 1: 一级, 2: 二级
-  // 状态: pending-待结算, settled-已结算, frozen-冻结
+  // 状态: pending-待结算, settled-已结算(已解冻), frozen-冻结(退款保护期), clawed_back-已追回
   status: { 
     type: String, 
-    enum: ['pending', 'settled', 'frozen'],
+    enum: ['pending', 'settled', 'frozen', 'clawed_back'],
     default: 'pending' 
   },
+  // 冻结时间
+  frozenAt: { type: Date },
+  // 追回时间
+  clawedBackAt: { type: Date },
   // 结算时间
   settledAt: { type: Date },
   description: { type: String },

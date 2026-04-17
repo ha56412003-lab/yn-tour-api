@@ -86,3 +86,26 @@ export function getLogistics(params: { expressCompany: string; expressNo: string
     tracks: { time: string; status: string; location: string }[]
   }>('/order/logistics', params)
 }
+
+// ============================================
+// 退款相关
+// ============================================
+
+export interface RefundApplyResponse {
+  refundStatus: string
+  refundApplyTime: string
+  refundReason: string
+}
+
+// 申请退款
+export function applyRefund(data: { orderId: string; reason?: string }) {
+  return post<RefundApplyResponse>('/refund/apply', data)
+}
+
+// 我的退款列表
+export function getMyRefundList(params: { page?: number; limit?: number }) {
+  return get<{
+    list: OrderInfo[]
+    pagination: { page: number; limit: number; total: number; pages: number }
+  }>('/refund/my-list', params)
+}

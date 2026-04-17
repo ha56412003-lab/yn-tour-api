@@ -78,6 +78,10 @@
           <span class="nav-icon">🏠</span>
           <span>首页装修</span>
         </a>
+        <a href="#" class="nav-item" data-page="refund">
+          <span class="nav-icon">🔄</span>
+          <span>售后管理</span>
+        </a>
       </nav>
       <div class="sidebar-footer">
         <a href="#" class="nav-item" onclick="handleLogout()">
@@ -417,7 +421,48 @@
         </div>
       </div>
 
-      <!-- 导入审核页面 -->
+
+      <!-- 售后管理页面 -->
+      <div id="refund-page" class="content-page">
+        <div class="card">
+          <div class="card-header">
+            <h3>退款申请管理</h3>
+            <div class="card-actions">
+              <button class="btn btn-primary" onclick="loadRefundList()">刷新列表</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="filter-bar" style="margin-bottom:16px;">
+              <label style="font-size:14px;color:#666;margin-right:8px;">状态筛选：</label>
+              <select id="refund-status-filter" onchange="loadRefundList()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
+                <option value="all">全部</option>
+                <option value="applying">待审核</option>
+                <option value="approved">已通过</option>
+                <option value="rejected">已拒绝</option>
+              </select>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>订单号</th>
+                  <th>用户</th>
+                  <th>商品</th>
+                  <th>订单金额</th>
+                  <th>退款原因</th>
+                  <th>申请时间</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="refund-list-body">
+                <tr><td colspan="8" style="text-align:center;color:#999;padding:40px;">加载中...</td></tr>
+              </tbody>
+            </table>
+            <div id="refund-pagination" class="pagination" style="margin-top:16px;"></div>
+          </div>
+        </div>
+      </div>
+\n      <!-- 导入审核页面 -->
       <div id="import-page" class="content-page">
         <div class="card">
           <div class="card-header">

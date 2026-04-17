@@ -147,6 +147,7 @@ function switchPage(page) {
   if (page === 'itinerary') loadItineraryList();
   if (page === 'review') loadReviewList();
   if (page === 'home-decorate') loadHomeDecorate();
+  if (page === 'refund') loadRefundList();
 }
 
 // 加载数据看板
@@ -2340,6 +2341,120 @@ async function deleteItinerary(itineraryId) {
   }
 }
 
+
+
+
+// ============================================
+// 售后管理
+// ============================================
+
+let refundPage = 1;
+
+async function loadRefundList() {
+  const status = document.getElementById('refund-status-filter')?.value || 'applying';
+  const tbody = document.getElementById('refund-list-body');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:40px;">加载中...</td></tr>';
+  
+  try {
+    const res = await fetch(`${API_BASE}/refund/admin-list?page=${refundPage}&limit=20&status=${status}`);
+    const result = await res.json();
+    
+    if (result.code === 200 || result.success) {
+      const list = result.data?.list || result.data || [];
+      
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = list.map(item => {
+        const statusMap = {
+          'applying': '<span style="color:#ff9500;">待审核</span>',
+          'approved': '<span style="color:#2ecc71;">已通过</span>',
+          'rejected': '<span style="color:#e74c3c;">已拒绝</span>',
+          'none': '<span style="color:#999;">无</span>'
+        };
+        const status = item.refundStatus || 'none';
+        const paidDays = item.paidAt ? Math.floor((Date.now() - new Date(item.paidAt).getTime()) / (1000*60*60*24)) : '-';
+        
+        return `
+          <tr>
+            <td>${item.orderNo || '-'}</td>
+            <td>${item.userId?.nickname || '-'}<br><span style="color:#999;font-size:12px;">${item.userId?.phone || '-'}</span></td>
+            <td>${item.productName || '-'}</td>
+            <td style="color:#e8344e;font-weight:bold;">¥${item.totalAmount || 0}</td>
+            <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;" title="${item.refundReason || '-'}">${item.refundReason || '-'}</td>
+            <td>${item.refundApplyTime ? new Date(item.refundApplyTime).toLocaleString() : '-'}</td>
+            <td>${statusMap[status] || status}</td>
+            <td>
+              ${status === 'applying' ? `
+                <button class="btn btn-sm btn-success" onclick="handleRefundApprove('${item._id}')">通过</button>
+                <button class="btn btn-sm btn-danger" onclick="handleRefundReject('${item._id}')">拒绝</button>
+              ` : `<span style="color:#999;font-size:12px;">${item.refundRemark || '-'}</span>`}
+            </td>
+          </tr>
+        `;
+      }).join('');
+      
+      // 分页
+      const total = result.data?.pagination?.total || 0;
+      const pages = Math.ceil(total / 20);
+      const pagination = document.getElementById('refund-pagination');
+      if (pagination) {
+        pagination.innerHTML = generatePagination(refundPage, pages, (p) => { refundPage = p; loadRefundList(); });
+      }
+    } else {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#e74c3c;padding:40px;">加载失败</td></tr>';
+    }
+  } catch (err) {
+    console.error('加载退款列表失败:', err);
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#e74c3c;padding:40px;">加载失败: ' + err.message + '</td></tr>';
+  }
+}
+
+async function handleRefundApprove(orderId) {
+  if (!confirm('确认通过退款申请？退款成功后佣金将自动追回。')) return;
+  
+  try {
+    const res = await fetch(`${API_BASE}/refund/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId })
+    });
+    const result = await res.json();
+    if (result.code === 200 || result.success) {
+      alert('退款已通过，佣金已追回');
+      loadRefundList();
+    } else {
+      alert('操作失败：' + (result.message || result.msg));
+    }
+  } catch (err) {
+    alert('操作失败：' + err.message);
+  }
+}
+
+async function handleRefundReject(orderId) {
+  const remark = prompt('请输入拒绝原因（选填）：');
+  
+  try {
+    const res = await fetch(`${API_BASE}/refund/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId, remark })
+    });
+    const result = await res.json();
+    if (result.code === 200 || result.success) {
+      alert('已拒绝退款申请');
+      loadRefundList();
+    } else {
+      alert('操作失败：' + (result.message || result.msg));
+    }
+  } catch (err) {
+    alert('操作失败：' + err.message);
+  }
+}
 
 if (localStorage.getItem('adminLoggedIn') === 'true') {
   showAdminPage();

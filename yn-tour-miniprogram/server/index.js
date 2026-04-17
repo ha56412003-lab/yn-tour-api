@@ -15,6 +15,7 @@ const authRoutes = require('./routes/auth')
 const galleryRoutes = require('./routes/gallery')
 const homeConfigRoutes = require('./routes/homeConfig')
 const reviewRoutes = require('./routes/review')
+const refundRoutes = require('./routes/refund')
 const itineraryRoutes = require('./routes/itinerary')
 
 const app = express()
@@ -43,6 +44,7 @@ app.use('/api/gallery', galleryRoutes)
 app.use('/api/homeConfig', homeConfigRoutes)
 app.use('/api/review', reviewRoutes)
 app.use('/api/itinerary', itineraryRoutes)
+app.use('/api/refund', refundRoutes)
 
 // 健康检查
 app.get('/health', (req, res) => {

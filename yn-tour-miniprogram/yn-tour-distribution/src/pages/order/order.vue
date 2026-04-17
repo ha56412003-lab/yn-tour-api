@@ -56,6 +56,10 @@
 					<view class="order-btns">
 						<button class="btn btn-pay" v-if="order.status === 'pending'" @click.stop="goToPay(order)">去支付</button>
 						<button class="btn btn-detail" v-if="order.status === 'paid' || order.deliveryStatus === 'shipped'" @click.stop="showOrderDetail(order)">查看详情</button>
+						<button class="btn btn-refund" v-if="canApplyRefund(order)" @click.stop="openRefundModal(order)">申请退款</button>
+						<text class="refund-tip refund-applying" v-if="order.refundStatus === 'applying'">退款中</text>
+						<text class="refund-tip refund-approved" v-if="order.refundStatus === 'approved'">已退款</text>
+						<text class="refund-tip refund-rejected" v-if="order.refundStatus === 'rejected'">退款被拒</text>
 					</view>
 				</view>
 			</view>
@@ -191,13 +195,43 @@
 			</view>
 		</view>
 	</view>
+
+		<!-- 退款申请弹窗 -->
+		<view class="refund-modal" v-if="showRefundModal" @click="showRefundModal = false">
+			<view class="refund-modal-content" @click.stop>
+				<view class="refund-modal-header">
+					<text>申请退款</text>
+					<text class="close-btn" @click="showRefundModal = false">✕</text>
+				</view>
+				<view class="refund-modal-body">
+					<view class="refund-rule">
+						<text class="rule-title">退款规则</text>
+						<text class="rule-item">• 付款后7天内：无条件退款</text>
+						<text class="rule-item">• 付款后7-30天：协商退款</text>
+						<text class="rule-item">• 付款后超过30天：不可退款</text>
+					</view>
+					<view class="refund-form">
+						<text class="form-label">退款原因（选填）</text>
+						<textarea class="refund-textarea" v-model="refundReason" placeholder="请输入退款原因..." maxlength="200"></textarea>
+					</view>
+					<view class="refund-order-info" v-if="refundOrder">
+						<text class="order-info-label">订单号：{{ refundOrder.orderNo }}</text>
+						<text class="order-info-amount">退款金额：¥{{ refundOrder.totalAmount }}</text>
+					</view>
+					<view class="refund-btns">
+						<button class="refund-cancel" @click="showRefundModal = false">取消</button>
+						<button class="refund-confirm" :loading="refundLoading" @click="confirmRefund">确认提交</button>
+					</view>
+				</view>
+			</view>
+		</view>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '../../store/user'
-import { getOrderList, mockPay, getLogistics } from '../../api/order'
+import { getOrderList, mockPay, getLogistics, applyRefund } from '../../api/order'
 
 const userStore = useUserStore()
 
@@ -207,6 +241,11 @@ const tabs = ['全部', '待支付', '已支付', '处理中']
 const orderList = ref([])
 const showDetail = ref(false)
 const selectedOrder = ref(null)
+// 退款弹窗
+const showRefundModal = ref(false)
+const refundOrder = ref(null)
+const refundReason = ref('')
+const refundLoading = ref(false)
 const logisticsTracks = ref([])
 const logisticsLoading = ref(false)
 
@@ -322,6 +361,42 @@ const handlePay = async (orderId, payMethod) => {
 		if (!dateStr) return '-'
 		const date = new Date(dateStr)
 		return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+	}
+
+	const canApplyRefund = (order) => {
+		if (order.status !== 'paid') return false
+		if (order.refundStatus && order.refundStatus !== 'none') return false
+		if (!order.paidAt) return false
+		const daysDiff = (Date.now() - new Date(order.paidAt).getTime()) / (1000 * 60 * 60 * 24)
+		return daysDiff <= 30
+	}
+
+	const openRefundModal = (order) => {
+		refundOrder.value = order
+		refundReason.value = ''
+		showRefundModal.value = true
+	}
+
+	const confirmRefund = async () => {
+		if (!refundOrder.value) return
+		refundLoading.value = true
+		try {
+			const res = await applyRefund({
+				orderId: refundOrder.value._id,
+				reason: refundReason.value
+			})
+			if (res.success) {
+				uni.showToast({ title: '退款申请已提交', icon: 'success' })
+				showRefundModal.value = false
+				loadOrders()
+			} else {
+				uni.showToast({ title: res.message, icon: 'none' })
+			}
+		} catch (e) {
+			uni.showToast({ title: '申请失败', icon: 'none' })
+		} finally {
+			refundLoading.value = false
+		}
 	}
 </script>
 
@@ -828,4 +903,143 @@ const handlePay = async (orderId, payMethod) => {
 		color: #ff6600;
 		font-weight: bold;
 	}
+
+	/* 退款按钮 */
+	.btn-refund {
+		font-size: 22rpx;
+		color: #999;
+		background: #f5f5f5;
+		border: 1rpx solid #ddd;
+		border-radius: 20rpx;
+		padding: 0 16rpx;
+		height: 48rpx;
+		line-height: 48rpx;
+		margin-left: 8rpx;
+	}
+	.btn-refund::after { border: none; }
+
+	.refund-tip {
+		font-size: 22rpx;
+		padding: 0 12rpx;
+		height: 48rpx;
+		line-height: 48rpx;
+		border-radius: 20rpx;
+		margin-left: 8rpx;
+	}
+	.refund-applying { color: #ff9500; background: #fff8e6; }
+	.refund-approved { color: #999; background: #f5f5f5; }
+	.refund-rejected { color: #e8344e; background: #fff0f0; }
+
+	/* 退款弹窗 */
+	.refund-modal {
+		position: fixed;
+		top: 0; left: 0; right: 0; bottom: 0;
+		background: rgba(0,0,0,0.5);
+		z-index: 200;
+		display: flex;
+		align-items: flex-end;
+	}
+	.refund-modal-content {
+		width: 100%;
+		background: #fff;
+		border-radius: 24rpx 24rpx 0 0;
+	}
+	.refund-modal-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 30rpx;
+		border-bottom: 1rpx solid #eee;
+	}
+	.refund-modal-header text:first-child {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333;
+	}
+	.refund-modal-body {
+		padding: 30rpx;
+	}
+	.refund-rule {
+		background: #f9f9f9;
+		border-radius: 12rpx;
+		padding: 20rpx;
+		margin-bottom: 24rpx;
+	}
+	.rule-title {
+		display: block;
+		font-size: 26rpx;
+		font-weight: bold;
+		color: #333;
+		margin-bottom: 10rpx;
+	}
+	.rule-item {
+		display: block;
+		font-size: 24rpx;
+		color: #666;
+		line-height: 1.8;
+	}
+	.refund-form {
+		margin-bottom: 20rpx;
+	}
+	.form-label {
+		display: block;
+		font-size: 26rpx;
+		color: #333;
+		margin-bottom: 10rpx;
+		font-weight: 500;
+	}
+	.refund-textarea {
+		width: 100%;
+		box-sizing: border-box;
+		background: #f8f9fa;
+		border-radius: 12rpx;
+		padding: 20rpx;
+		font-size: 28rpx;
+		min-height: 160rpx;
+		border: 1rpx solid #eee;
+	}
+	.refund-order-info {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 16rpx 0;
+		border-top: 1rpx solid #f0f0f0;
+		margin-bottom: 20rpx;
+	}
+	.order-info-label {
+		font-size: 24rpx;
+		color: #999;
+	}
+	.order-info-amount {
+		font-size: 28rpx;
+		color: #e8344e;
+		font-weight: bold;
+	}
+	.refund-btns {
+		display: flex;
+		gap: 20rpx;
+	}
+	.refund-cancel {
+		flex: 1;
+		height: 88rpx;
+		line-height: 88rpx;
+		background: #f5f5f5;
+		color: #666;
+		font-size: 30rpx;
+		border-radius: 44rpx;
+		border: none;
+	}
+	.refund-cancel::after { border: none; }
+	.refund-confirm {
+		flex: 2;
+		height: 88rpx;
+		line-height: 88rpx;
+		background: linear-gradient(135deg, #e8344e, #ff6b6b);
+		color: #fff;
+		font-size: 30rpx;
+		font-weight: bold;
+		border-radius: 44rpx;
+		border: none;
+	}
+	.refund-confirm::after { border: none; }
 </style>

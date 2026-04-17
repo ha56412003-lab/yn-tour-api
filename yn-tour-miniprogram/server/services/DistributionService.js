@@ -40,9 +40,9 @@ class DistributionService {
     if (!referrer || !referrer.isDistributor) {
       console.log(`[分销] 订单 ${order.orderNo} 无有效推荐人，跳过分销计算`)
       
-      // 标记订单佣金已结算
+      // 标记订单佣金状态为已冻结（无推荐人则无佣金可冻结）
       await Order.findByIdAndUpdate(orderId, {
-        'commission.settled': true
+        commissionStatus: 'frozen'
       })
       
       return { success: true, message: '无有效推荐人，跳过分销计算' }
@@ -51,16 +51,16 @@ class DistributionService {
     // 3. 计算279直推分润
     const result = await this.calculate279Profit(referrer, order, product, buyer)
     
-    // 4. 标记订单佣金已结算
+    // 4. 标记订单佣金状态为冻结（30天后退款保护期后自动解冻）
     await Order.findByIdAndUpdate(orderId, {
-      'commission.settled': true,
+      commissionStatus: 'frozen',
       'distribution.referrerId': referrer._id,
       'distribution.directProfit': result.directProfit,
       'distribution.groupBonus': result.groupBonus || 0,
       'distribution.referrerOrderIndex': result.orderIndex
     })
 
-    return { success: true, message: '279分销佣金计算完成', data: result }
+    return { success: true, message: '279分销佣金计算完成（冻结状态，30天后退款保护期后解冻）', data: result }
   }
 
   /**
@@ -102,7 +102,7 @@ class DistributionService {
 
     await User.findByIdAndUpdate(referrer._id, updateData)
 
-    // 创建直推分润记录
+    // 创建直推分润记录（冻结状态，30天后退款保护期后解冻）
     await Commission.create({
       userId: referrer._id,
       orderId: order._id,
@@ -111,16 +111,16 @@ class DistributionService {
       orderAmount: orderAmount,
       relatedUserId: buyer._id,
       level: 1,
-      status: 'settled',
-      settledAt: new Date(),
-      description: `279直推分润 - 第${orderIndex}单 - ${order.orderNo}`
+      status: 'frozen',
+      frozenAt: new Date(),
+      description: `279直推分润 - 第${orderIndex}单 - ${order.orderNo}（退款保护期冻结）`
     })
 
-    // 更新推荐人的收益
+    // 更新推荐人的收益（佣金进入冻结余额）
     await User.findByIdAndUpdate(referrer._id, {
       $inc: {
         totalEarnings: directProfit,
-        availableBalance: directProfit,
+        frozenBalance: directProfit,
         directOrders: 1
       }
     })
@@ -171,7 +171,7 @@ class DistributionService {
       groupNum: newGroupNum
     })
 
-    // 创建成团奖记录
+    // 创建成团奖记录（冻结状态）
     await Commission.create({
       userId: userId,
       orderId: triggerOrder._id,
@@ -179,16 +179,16 @@ class DistributionService {
       amount: totalBonus,
       orderAmount: triggerOrder.totalAmount,
       relatedUserId: triggerOrder.userId,
-      status: 'settled',
-      settledAt: new Date(),
-      description: `成团奖 - 第${newGroupNum}团 - ${newGroups}团 × 800元`
+      status: 'frozen',
+      frozenAt: new Date(),
+      description: `成团奖 - 第${newGroupNum}团 - ${newGroups}团 × 800元（退款保护期冻结）`
     })
 
-    // 更新用户收益
+    // 更新用户收益（佣金进入冻结余额）
     await User.findByIdAndUpdate(userId, {
       $inc: {
         totalEarnings: totalBonus,
-        availableBalance: totalBonus
+        frozenBalance: totalBonus
       }
     })
 
@@ -635,6 +635,112 @@ class DistributionService {
         pages: Math.ceil(total / limit)
       }
     }
+  }
+
+  /**
+   * 释放冻结佣金（30天退款保护期满后自动调用）
+   * 从 frozenBalance 转入 availableBalance
+   */
+  static async releaseFrozenCommission(orderId) {
+    const order = await Order.findById(orderId)
+    if (!order || order.commissionStatus !== 'frozen') {
+      return { success: false, message: '订单不存在或佣金状态异常' }
+    }
+
+    // 查找该订单对应的所有冻结佣金记录
+    const frozenCommissions = await Commission.find({ orderId, status: 'frozen' })
+    if (frozenCommissions.length === 0) {
+      // 无冻结佣金，直接标记为released
+      await Order.findByIdAndUpdate(orderId, { commissionStatus: 'released' })
+      return { success: true, message: '无冻结佣金记录' }
+    }
+
+    const releaseInfo = []
+    for (const comm of frozenCommissions) {
+      // 从冻结余额转入可用余额
+      await User.findByIdAndUpdate(comm.userId, {
+        $inc: {
+          frozenBalance: -comm.amount,
+          availableBalance: comm.amount
+        }
+      })
+
+      // 更新佣金记录状态为已结算
+      await Commission.findByIdAndUpdate(comm._id, {
+        status: 'settled',
+        settledAt: new Date()
+      })
+
+      releaseInfo.push({ userId: comm.userId, amount: comm.amount })
+    }
+
+    // 标记订单佣金状态为已释放
+    await Order.findByIdAndUpdate(orderId, { commissionStatus: 'released' })
+
+    console.log(`[佣金解冻] 订单 ${order.orderNo} 佣金已释放：`, releaseInfo)
+    return { success: true, message: '佣金已释放到可用余额', data: releaseInfo }
+  }
+
+  /**
+   * 佣金追回（退款审核通过后调用）
+   * 创建负收益记录，从 frozenBalance 或 availableBalance 扣回
+   */
+  static async clawbackCommission(orderId) {
+    const order = await Order.findById(orderId)
+    if (!order || order.commissionStatus === 'clawed_back') {
+      return { success: false, message: '订单不存在或佣金已追回' }
+    }
+
+    // 查找该订单对应的所有冻结/已结算佣金记录
+    const commissions = await Commission.find({ 
+      orderId, 
+      status: { $in: ['frozen', 'settled'] } 
+    })
+
+    if (commissions.length === 0) {
+      await Order.findByIdAndUpdate(orderId, { commissionStatus: 'clawed_back' })
+      return { success: true, message: '无佣金可追回' }
+    }
+
+    const clawbackInfo = []
+    for (const comm of commissions) {
+      // 查找用户
+      const user = await User.findById(comm.userId)
+      if (!user) continue
+
+      if (comm.status === 'frozen') {
+        // 冻结中：从 frozenBalance 扣回
+        await User.findByIdAndUpdate(comm.userId, {
+          $inc: { frozenBalance: -comm.amount }
+        })
+      } else if (comm.status === 'settled') {
+        // 已解冻：从 availableBalance 扣回，余额不足则从 frozenBalance 补扣
+        const available = user.availableBalance || 0
+        let fromAvailable = Math.min(available, comm.amount)
+        let fromFrozen = comm.amount - fromAvailable
+
+        await User.findByIdAndUpdate(comm.userId, {
+          $inc: {
+            availableBalance: -fromAvailable,
+            frozenBalance: -fromFrozen
+          }
+        })
+      }
+
+      // 更新佣金记录状态为已追回
+      await Commission.findByIdAndUpdate(comm._id, {
+        status: 'clawed_back',
+        clawedBackAt: new Date()
+      })
+
+      clawbackInfo.push({ userId: comm.userId, amount: comm.amount })
+    }
+
+    // 标记订单佣金状态为已追回
+    await Order.findByIdAndUpdate(orderId, { commissionStatus: 'clawed_back' })
+
+    console.log(`[佣金追回] 订单 ${order.orderNo} 佣金已追回：`, clawbackInfo)
+    return { success: true, message: '佣金已追回', data: clawbackInfo }
   }
 }
 
