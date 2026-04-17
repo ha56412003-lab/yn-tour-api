@@ -1,10 +1,18 @@
 // 用户相关API
 const express = require('express')
 const router = express.Router()
+const jwt = require('jsonwebtoken')
 const User = require('../models/User')
 const DistributionService = require('../services/DistributionService')
 const Background = require('../models/Background')
+const userAuth = require('../middleware/userAuth')
 const https = require('https')
+
+const JWT_SECRET = process.env.JWT_SECRET || 'haha-jwt-secret-2026'
+
+function signToken(userId) {
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '30d' })
+}
 
 // 获取用户信息
 router.get('/info', async (req, res) => {
@@ -56,11 +64,14 @@ router.post('/test-login', async (req, res) => {
     
     res.json({
       code: 200,
-      data: user
+      data: {
+        user,
+        token: signToken(user._id.toString())
+      }
     })
   } catch (err) {
     res.json({ code: 500, message: err.message })
-  }
+   }
 })
 
 // 微信登录 / 创建用户（直接传 openid，适用于有微信授权能力的情况）
@@ -140,17 +151,21 @@ router.post('/wx-login', async (req, res) => {
     
     res.json({
       code: 200,
-      data: user
+      data: {
+        user,
+        token: signToken(user._id.toString())
+      }
     })
   } catch (err) {
     res.json({ code: 500, message: err.message })
   }
 })
 
+
 // 成为分销商
-router.post('/become-distributor', async (req, res) => {
+router.post('/become-distributor', userAuth, async (req, res) => {
   try {
-    const { userId } = req.body
+    const userId = req.headers['x-user-id']
     const result = await DistributionService.becomeDistributor(userId)
     
     res.json(result)
@@ -160,9 +175,9 @@ router.post('/become-distributor', async (req, res) => {
 })
 
 // 获取用户收益统计（279机制）
-router.get('/earnings', async (req, res) => {
+router.get('/earnings', userAuth, async (req, res) => {
   try {
-    const { userId } = req.query
+    const userId = req.headers['x-user-id']
     const result = await DistributionService.getUserEarnings(userId)
     
     if (!result.success) {
@@ -179,9 +194,9 @@ router.get('/earnings', async (req, res) => {
 })
 
 // 计算可提现金额（279机制）
-router.get('/calculate-withdraw', async (req, res) => {
+router.get('/calculate-withdraw', userAuth, async (req, res) => {
   try {
-    const { userId } = req.query
+    const userId = req.headers['x-user-id']
     const user = await User.findById(userId)
     
     if (!user) {
@@ -200,9 +215,10 @@ router.get('/calculate-withdraw', async (req, res) => {
 })
 
 // 获取收益明细
-router.get('/commission-list', async (req, res) => {
+router.get('/commission-list', userAuth, async (req, res) => {
   try {
-    const { userId, page = 1, limit = 20 } = req.query
+    const userId = req.headers['x-user-id']
+    const { page = 1, limit = 20 } = req.query
     const result = await DistributionService.getCommissionList(userId, parseInt(page), parseInt(limit))
     
     res.json({
@@ -226,9 +242,9 @@ router.get('/team-ranking', async (req, res) => {
 })
 
 // 获取我的团队信息
-router.get('/my-team', async (req, res) => {
+router.get('/my-team', userAuth, async (req, res) => {
   try {
-    const { userId } = req.query
+    const userId = req.headers['x-user-id']
     const user = await User.findById(userId)
     
     if (!user) {

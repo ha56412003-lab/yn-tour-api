@@ -1,8 +1,16 @@
 // 手机号+短信验证码登录
 const express = require('express')
 const router = express.Router()
+const jwt = require('jsonwebtoken')
 const User = require('../models/User')
 const DistributionService = require('../services/DistributionService')
+
+const JWT_SECRET = process.env.JWT_SECRET || 'haha-jwt-secret-2026'
+const JWT_EXPIRES_IN = '30d'
+
+function signToken(userId) {
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+}
 
 // 模拟短信发送（生产环境替换为腾讯云/阿里云短信）
 // 存储验证码：{ phone: { code, expiresAt } }
@@ -86,7 +94,10 @@ router.post('/phone-login', async (req, res) => {
     
     res.json({
       code: 200,
-      data: user
+      data: {
+        user,
+        token: signToken(user._id.toString())
+      }
     })
   } catch (err) {
     res.json({ code: 500, message: err.message })
