@@ -131,7 +131,7 @@ body {
 }
 
 /* 主管理页面 */
-#admin-page {
+#admin-page.active {
   display: flex;
   min-height: 100vh;
 }
@@ -746,4 +746,244 @@ body {
 .btn-success {
   background: #10b981 !important;
   color: #fff !important;
+}
+
+/* ========================
+   行程编辑器
+   ======================== */
+#itinerary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.itinerary-day {
+  background: #f8f9ff;
+  border: 1px solid #e0e4ff;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.itinerary-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.itinerary-day-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #667eea;
+}
+
+.itinerary-day-remove {
+  background: none;
+  border: none;
+  color: #e8344e;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.itinerary-day input,
+.itinerary-day textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-bottom: 6px;
+  box-sizing: border-box;
+}
+
+.itinerary-day textarea {
+  resize: vertical;
+  min-height: 48px;
+}
+
+.itinerary-day-meta {
+  display: flex;
+  gap: 8px;
+}
+
+.itinerary-day-meta input {
+  flex: 1;
+  margin-bottom: 0 !important;
+}
+
+/* 亮点编辑器 */
+#highlights-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.highlight-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.highlight-row input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.highlight-row .btn-remove {
+  background: #e8344e;
+  color: #fff;
+  border: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* 须知编辑器 */
+#notices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notice-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.notice-row input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.notice-row .btn-remove {
+  background: #e8344e;
+  color: #fff;
+  border: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* 星级评分 */
+#review-star-rating .star {
+  font-size: 28px; color: #ddd; cursor: pointer; transition: color 0.2s;
+}
+#review-star-rating .star.active { color: #FFB800; }
+
+/* 评价列表 */
+#reviews-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.review-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px; background: #FFF9F0; border-radius: 8px; border: 1rpx solid #FFE0B2;
+}
+.review-item-img { width: 60px; height: 60px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+.review-item-info { flex: 1; min-width: 0; }
+.review-item-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.review-item-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+.review-item-nick { font-size: 13px; font-weight: 600; color: #333; }
+.review-item-stars { color: #FFB800; font-size: 12px; }
+.review-item-content { font-size: 12px; color: #666; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.review-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.review-item-actions .btn { padding: 4px 8px; font-size: 11px; }
+.review-item-hidden { opacity: 0.45; }
+
+/* 评价管理列表 */
+.review-admin-list { display: flex; flex-direction: column; gap: 12px; }
+.review-admin-card {
+  display: flex; align-items: flex-start; gap: 16px;
+  padding: 14px; background: #FFF9F0; border-radius: 12px; border: 1px solid #FFE0B2;
+}
+.review-admin-card.hidden { opacity: 0.5; }
+.review-admin-img { width: 100px; height: 75px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #eee; }
+.review-admin-body { flex: 1; min-width: 0; }
+.review-admin-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.review-admin-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: #eee; }
+.review-admin-nick { font-size: 14px; font-weight: 600; color: #333; }
+.review-admin-stars { color: #FFB800; font-size: 13px; }
+.review-admin-content { font-size: 12px; color: #666; line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.review-admin-meta { font-size: 11px; color: #bbb; margin-top: 4px; }
+.review-admin-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.review-admin-actions .btn { padding: 5px 10px; font-size: 12px; }
+.review-admin-toggle { display: flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer; }
+.review-admin-toggle input { width: 14px; height: 14px; }
+
+/* 多图上传区域 */
+.multi-image-upload-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  min-height: 100px;
+}
+.multi-image-upload-area .upload-placeholder {
+  width: 80px;
+  height: 80px;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #999;
+  font-size: 12px;
+  transition: border-color 0.2s;
+}
+.multi-image-upload-area .upload-placeholder:hover { border-color: #4facfe; }
+.multi-image-upload-area .upload-placeholder .upload-icon { font-size: 24px; margin-bottom: 4px; }
+.multi-image-upload-area .image-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.multi-image-upload-area .image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.multi-image-upload-area .image-item .remove-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+  cursor: pointer;
+}
+.multi-image-upload-area .image-item .img-order {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
 }

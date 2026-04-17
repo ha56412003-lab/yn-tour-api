@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="100" fill="url(#bg)"/>
+  <!-- body -->
+  <ellipse cx="100" cy="175" rx="55" ry="30" fill="#5a67d2" opacity="0.6"/>
+  <!-- shirt collar -->
+  <path d="M70 145 Q100 155 130 145 L125 155 Q100 165 75 155 Z" fill="#ffffff" opacity="0.9"/>
+  <!-- neck -->
+  <rect x="90" y="130" width="20" height="20" fill="#fbd3c6" rx="5"/>
+  <!-- head -->
+  <ellipse cx="100" cy="105" rx="42" ry="45" fill="#fbd3c6"/>
+  <!-- hair -->
+  <ellipse cx="100" cy="68" rx="40" ry="22" fill="#3d3d3d"/>
+  <ellipse cx="65" cy="85" rx="10" ry="18" fill="#3d3d3d"/>
+  <ellipse cx="135" cy="85" rx="10" ry="18" fill="#3d3d3d"/>
+  <!-- ears -->
+  <ellipse cx="58" cy="108" rx="7" ry="10" fill="#f0b8a0"/>
+  <ellipse cx="142" cy="108" rx="7" ry="10" fill="#f0b8a0"/>
+  <!-- eyes -->
+  <ellipse cx="83" cy="103" rx="7" ry="8" fill="#3d3d3d"/>
+  <ellipse cx="117" cy="103" rx="7" ry="8" fill="#3d3d3d"/>
+  <circle cx="85" cy="101" r="2" fill="#fff"/>
+  <circle cx="119" cy="101" r="2" fill="#fff"/>
+  <!-- eyebrows -->
+  <path d="M75 93 Q83 90 91 93" stroke="#3d3d3d" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M109 93 Q117 90 125 93" stroke="#3d3d3d" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- nose -->
+  <path d="M100 107 Q103 115 100 118" stroke="#e09080" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- smile -->
+  <path d="M87 125 Q100 137 113 125" stroke="#d06a55" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- name tag / lanyard -->
+  <rect x="85" y="148" width="30" height="18" rx="4" fill="#ffd700"/>
+  <rect x="94" y="150" width="12" height="3" rx="1" fill="#ff9500"/>
+  <rect x="96" y="155" width="8" height="8" rx="1" fill="#ff9500"/>
+</svg>

@@ -690,7 +690,7 @@ page { height: 100%; overflow: hidden; }
 .poster-preview {
   position: relative; width: 100%; border-radius: 16rpx; overflow: hidden; margin-bottom: 16rpx;
 }
-.poster-thumb { width: 100%; height: auto; display: block; }
+.poster-thumb { width: 100%; display: block; }
 .poster-hint { 
   position: absolute; bottom: 0; left: 0; right: 0;
   background: rgba(0,0,0,0.45); color: #fff; font-size: 22rpx;

@@ -133,51 +133,84 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { useUserStore } from '../../store/user'
+import { getMyTeam, getTeamRanking } from '../../api/user'
 
-const timeType = ref('month')
+const userStore = useUserStore()
+const timeType = ref('all')
 
-const myRank = ref(8)
-const myTeamSize = ref(15)
-const myStats = ref({ self: 5, direct: 12, team: 23, group: 8 })
+const myRank = ref(0)
+const myTeamSize = ref(0)
+const myStats = ref({ self: 0, direct: 0, team: 0, group: 0 })
+const topList = ref([])
+const loading = ref(false)
 
-// 模拟数据（对接后台后替换）
-const allData = {
-  month: [
-    { id: 1, name: '李娜', self: 12, direct: 28, team: 45, group: 15, avatar: '' },
-    { id: 2, name: '张伟', self: 8, direct: 22, team: 38, group: 12, avatar: '' },
-    { id: 3, name: '王芳', self: 10, direct: 18, team: 32, group: 10, avatar: '' },
-    { id: 4, name: '赵强', self: 6, direct: 15, team: 28, group: 9, avatar: '' },
-    { id: 5, name: '刘洋', self: 5, direct: 12, team: 24, group: 8, avatar: '' },
-    { id: 6, name: '陈静', self: 4, direct: 10, team: 20, group: 7, avatar: '' },
-    { id: 7, name: '杨明', self: 3, direct: 8, team: 18, group: 6, avatar: '' },
-    { id: 8, name: '黄磊', self: 5, direct: 6, team: 15, group: 5, avatar: '' },
-    { id: 9, name: '周涛', self: 2, direct: 8, team: 14, group: 4, avatar: '' },
-    { id: 10, name: '吴娟', self: 3, direct: 5, team: 12, group: 4, avatar: '' },
-  ],
-  lastMonth: [
-    { id: 1, name: '张伟', self: 10, direct: 25, team: 42, group: 14, avatar: '' },
-    { id: 2, name: '李娜', self: 11, direct: 20, team: 38, group: 13, avatar: '' },
-    { id: 3, name: '王芳', self: 9, direct: 16, team: 30, group: 9, avatar: '' },
-  ],
-  all: [
-    { id: 1, name: '李娜', self: 120, direct: 280, team: 450, group: 150, avatar: '' },
-    { id: 2, name: '张伟', self: 85, direct: 220, team: 380, group: 120, avatar: '' },
-    { id: 3, name: '王芳', self: 100, direct: 180, team: 320, group: 100, avatar: '' },
-  ]
-}
-
-const topList = computed(() => allData[timeType.value] || [])
-
-const switchTime = (type) => {
-  timeType.value = type
-}
-
-// 姓名脱敏：前10名中间脱敏，11-100名全显示
+// 姓名脱敏
 const desensitizeName = (name, index) => {
+  if (!name) return '***'
   if (index < 10 && name.length >= 2) {
     return name[0] + '*' + name[name.length - 1]
   }
   return name
+}
+
+onShow(() => {
+  if (userStore.state.isLoggedIn) {
+    loadTeamData()
+  }
+})
+
+async function loadTeamData() {
+  loading.value = true
+  try {
+    const userId = userStore.state.userId
+    if (!userId) return
+
+    // 并行请求我的团队数据 + 排行榜
+    const [teamRes, rankingRes] = await Promise.all([
+      getMyTeam({ userId }),
+      getTeamRanking({ limit: 10 })
+    ])
+
+    // 填充我的数据
+    if (teamRes.code === 200 && teamRes.data) {
+      const d = teamRes.data
+      myTeamSize.value = d.teamStats?.totalMembers || 0
+      myStats.value = {
+        self: d.myStats?.selfOrderNum || 0,
+        direct: d.myStats?.totalDirectPushNum || 0,
+        team: d.myStats?.totalTeamOrders || 0,
+        group: d.myStats?.groupNum || 0,
+      }
+    }
+
+    // 填充排行榜
+    if (rankingRes.code === 200 && rankingRes.data) {
+      topList.value = rankingRes.data.map((item, index) => ({
+        id: item._id || index,
+        name: item.nickname || '用户' + String(index + 1),
+        self: item.selfOrderNum || 0,
+        direct: item.directPushNum || 0,
+        team: item.totalTeamOrders || 0,
+        group: item.groupNum || 0,
+        avatar: item.avatar || '',
+        totalEarnings: item.totalEarnings || 0
+      }))
+
+      // 计算我的排名
+      const myIndex = topList.value.findIndex(item => item.id === userId)
+      myRank.value = myIndex >= 0 ? myIndex + 1 : 0
+    }
+  } catch (e) {
+    console.error('加载团队数据失败', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+const switchTime = (type) => {
+  timeType.value = type
 }
 
 const goToRanking = () => {

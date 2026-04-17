@@ -21,13 +21,17 @@
     <!-- 第一屏 -->
     <view class="section1">
       <view class="hero-product" @click="goToProduct">
-        <image class="product-img" src="/static/product-bg.png" mode="aspectFill" />
+        <image
+          class="product-img"
+          :src="homeConfig?.bannerImage ? fullUrl(homeConfig.bannerImage) : '/static/product-bg.png'"
+          mode="aspectFill"
+        />
         <view class="product-tag">热卖</view>
         <view class="product-info">
-          <text class="product-name">云南6天5晚 · 轻奢游</text>
+          <text class="product-name">{{ homeConfig?.linkedProduct?.name || '云南6天5晚 · 轻奢游' }}</text>
           <view class="product-price-wrap">
-            <text class="product-price">¥799</text>
-            <text class="product-original">¥2999</text>
+            <text class="product-price">¥{{ getProductPrice() ?? '—' }}</text>
+            <text class="product-original" v-if="homeConfig?.linkedProduct?.originalPrice">¥{{ homeConfig.linkedProduct.originalPrice }}</text>
           </view>
         </view>
         <view class="buy-btn" @click.stop="goToProduct">立刻购买</view>
@@ -181,11 +185,12 @@
   </view>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onShow, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useUserStore } from '../../store/user'
 import { wxLoginAndBind, getTeamRanking } from '../../api/user'
+import { getHomeConfig } from '../../api/homeConfig'
 
 const userStore = useUserStore()
 const timeType = ref('month')
@@ -195,21 +200,57 @@ const searchResults = ref([])
 const rankData = ref([])
 const userInfo = ref({})
 
+// 首页配置（海报+关联产品）
+interface HomeConfigType {
+  bannerImage: string
+  linkedProductId: string
+  linkedProductName: string
+  linkedProduct: { _id: string; name: string; price: number; promotionPrice: number; mainImages: string[] }
+}
+const homeConfig = ref<HomeConfigType | null>(null)
+
+function fullUrl(path: string) {
+  if (!path) return ''
+  if (path.startsWith('http')) return path
+  const base = 'http://192.168.10.14:3000'
+  return path.startsWith('/') ? base + path : base + '/' + path
+}
+
+async function loadHomeConfig() {
+  try {
+    const res = await getHomeConfig()
+    if (res.code === 200 && res.data) {
+      homeConfig.value = res.data as any
+    }
+  } catch (e) {
+    console.error('加载首页配置失败', e)
+  }
+}
+
+function getProductPrice() {
+  const p = homeConfig.value?.linkedProduct
+  if (!p) return null
+  return p.isPromotion && p.promotionPrice ? p.promotionPrice : p.price
+}
+
 // 分享给好友
 onShareAppMessage(() => {
+  const productName = homeConfig.value?.linkedProduct?.name || '云南6天5晚跟团游'
+  const price = getProductPrice()
   return {
-    title: '云南6天5晚跟团游，只要799！一起旅行一起赚！',
+    title: `${productName}，只要${price}！一起旅行一起赚！`,
     path: `/pages/home/home?referrerId=${userStore.state.userId}`,
-    imageUrl: '/static/banner.jpg'
+    imageUrl: homeConfig.value?.bannerImage ? fullUrl(homeConfig.value.bannerImage) : '/static/banner.jpg'
   }
 })
 
 // 分享到朋友圈
 onShareTimeline(() => {
+  const price = getProductPrice()
   return {
-    title: '云南旅行799元6天5晚，一起旅行一起赚！',
+    title: `云南旅行${price}元6天5晚，一起旅行一起赚！`,
     query: `referrerId=${userStore.state.userId}`,
-    imageUrl: '/static/banner.jpg'
+    imageUrl: homeConfig.value?.bannerImage ? fullUrl(homeConfig.value.bannerImage) : '/static/banner.jpg'
   }
 })
 
@@ -232,6 +273,8 @@ onShow(async () => {
   
   // 2. 加载排行榜数据
   await loadRanking()
+  // 3. 加载首页配置（海报+关联产品）
+  await loadHomeConfig()
 })
 
 async function loadRanking() {
@@ -311,7 +354,14 @@ const handleResultClick = (item) => {
   uni.switchTab({ url: item.path })
 }
 
-const goToProduct = () => uni.navigateTo({ url: '/pages/product/product' })
+const goToProduct = () => {
+  const productId = homeConfig.value?.linkedProduct?._id
+  if (productId) {
+    uni.navigateTo({ url: `/pages/product/product?productId=${productId}` })
+  } else {
+    uni.navigateTo({ url: '/pages/product/product' })
+  }
+}
 const goToRegister = () => uni.navigateTo({ url: '/pages/join/join' })
 const goToShareTask = () => uni.navigateTo({ url: '/pages/share/share' })
 const goToLogin = () => uni.navigateTo({ url: '/pages/user/user' })

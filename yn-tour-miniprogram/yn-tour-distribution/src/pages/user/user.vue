@@ -64,6 +64,44 @@
       </view>
     </view>
 
+    <!-- 专属管家 -->
+    <view class="butler-card">
+      <view class="butler-left">
+        <image class="butler-avatar" src="/static/butler-avatar.png" />
+        <view class="butler-badge">专属管家</view>
+      </view>
+      <view class="butler-info">
+        <text class="butler-name">小哈旅行管家</text>
+        <text class="butler-desc">为您提供一对一专属服务</text>
+        <view class="butler-stats">
+          <view class="stat"><text class="stat-num">5000+</text><text class="stat-label">服务人数</text></view>
+          <view class="stat"><text class="stat-num">4.9</text><text class="stat-label">满意度</text></view>
+        </view>
+      </view>
+      <view class="butler-actions">
+        <view class="action-btn phone" @click="callButler">
+          <text class="btn-icon">📞</text>
+          <text class="btn-text">拨打电话</text>
+        </view>
+        <view class="action-btn wechat" @click="contactButler">
+          <text class="btn-icon">👤</text>
+          <text class="btn-text">+微联系管家</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 关注公众号 -->
+    <view class="official-account" @click="openGzhModal">
+      <view class="oa-content">
+        <view class="oa-icon-wrap"><text class="oa-icon">📣</text></view>
+        <view class="oa-info">
+          <text class="oa-title">关注公众号</text>
+          <text class="oa-desc">了解更多旅行资讯</text>
+        </view>
+      </view>
+      <text class="oa-arrow">›</text>
+    </view>
+
     <!-- 未成为分销商 - 开通卡片 -->
     <view class="open-card" v-if="isLoggedIn && !userInfo.isDistributor">
       <view class="open-header">
@@ -144,6 +182,10 @@
           <!-- 手机号登录 -->
           <view v-if="loginTab === 'phone'">
             <view class="phone-form">
+              <view class="bind-phone-hint" v-if="isPhoneBinding">
+                <text class="hint-icon">📱</text>
+                <text class="hint-text">绑定手机号以完善账号信息</text>
+              </view>
               <view class="phone-input-wrap">
                 <input
                   class="phone-input"
@@ -166,7 +208,7 @@
                 </button>
               </view>
               <button class="phone-login-btn" :loading="logging" @click="confirmPhoneLogin">
-                {{ logging ? '登录中...' : '登录 / 注册' }}
+                {{ logging ? '处理中...' : (isPhoneBinding ? '绑定手机' : '登录 / 注册') }}
               </button>
               <view class="login-tip">登录即表示同意《用户协议》和《隐私政策》</view>
             </view>
@@ -218,7 +260,8 @@
 import { ref, computed } from 'vue'
 import { onShow, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useUserStore } from '../../store/user'
-import { wxLoginAndBind, getUserEarnings, getMyTeam, getCurrentUserInfo, becomeDistributor, sendSmsCode, phoneLogin } from '../../api/user'
+import { wxLoginAndBind, getUserEarnings, getMyTeam, getCurrentUserInfo, becomeDistributor, sendSmsCode, phoneLogin, bindPhone } from '../../api/user'
+import { getHomeConfig } from '../../api/homeConfig'
 
 const userStore = useUserStore()
 
@@ -246,10 +289,12 @@ const paying = ref(false)
 const userInfo = ref({})
 const earnings = ref({})
 const teamStats = ref({})
+const homeConfig = ref({ butlerPhones: '', butlerWechats: '' })
 const loginTab = ref('wechat')
 const phoneForm = ref({ phone: '', code: '' })
 const smsCountdown = ref(0)
 let smsTimer = null
+const isPhoneBinding = ref(false)
 
 const isLoggedIn = computed(() => userStore.state.isLoggedIn)
 
@@ -267,6 +312,13 @@ onShow(async () => {
   if (userStore.state.isLoggedIn) {
     await loadUserData()
   }
+  // 加载管家配置
+  try {
+    const res = await getHomeConfig()
+    if (res.code === 200 && res.data) {
+      homeConfig.value = { butlerPhones: res.data.butlerPhones || '', butlerWechats: res.data.butlerWechats || '' }
+    }
+  } catch (e) {}
 })
 
 async function loadUserData() {
@@ -327,11 +379,23 @@ async function doLogin() {
 async function confirmLogin() {
   if (logging.value) return
   logging.value = true
-  
+  isPhoneBinding.value = false
+
   try {
     const user = await wxLoginAndBind()
     userInfo.value = user
     await loadUserData()
+
+    // 检查是否已绑定手机，未绑定则提示绑定
+    if (!user.phone) {
+      isPhoneBinding.value = true
+      loginTab.value = 'phone'
+      phoneForm.value = { phone: '', code: '' }
+      uni.showToast({ title: '请绑定手机号以完善账号信息', icon: 'none' })
+      logging.value = false
+      return
+    }
+
     showLoginModal.value = false
     uni.showToast({ title: '登录成功', icon: 'success' })
   } catch (e) {
@@ -381,26 +445,54 @@ async function confirmPhoneLogin() {
   }
   logging.value = true
   try {
-    const res = await phoneLogin({
-      phone,
-      code,
-      referrerId: userStore.state.referrerId || undefined
-    })
-    if (res.code === 200 && res.data) {
-      userInfo.value = res.data
-      userStore.setUser({
-        userId: res.data._id,
-        openid: res.data.openid,
-        nickname: res.data.nickname,
-        avatar: res.data.avatar,
-        phone: res.data.phone,
-        isDistributor: res.data.isDistributor
-      })
-      await loadUserData()
-      showLoginModal.value = false
-      uni.showToast({ title: '登录成功', icon: 'success' })
+    // 微信登录后绑定手机
+    if (isPhoneBinding.value) {
+      const userId = userStore.state.userId
+      if (!userId) {
+        uni.showToast({ title: '登录状态异常', icon: 'none' })
+        return
+      }
+      const res = await bindPhone({ userId, phone, code })
+      if (res.code === 200 && res.data) {
+        userInfo.value = res.data
+        userStore.setUser({
+          userId: res.data._id,
+          openid: res.data.openid,
+          nickname: res.data.nickname,
+          avatar: res.data.avatar,
+          phone: res.data.phone,
+          isDistributor: res.data.isDistributor
+        })
+        await loadUserData()
+        isPhoneBinding.value = false
+        showLoginModal.value = false
+        uni.showToast({ title: '绑定成功', icon: 'success' })
+      } else {
+        uni.showToast({ title: res.message || '绑定失败', icon: 'none' })
+      }
     } else {
-      uni.showToast({ title: res.message || '登录失败', icon: 'none' })
+      // 普通手机号登录
+      const res = await phoneLogin({
+        phone,
+        code,
+        referrerId: userStore.state.referrerId || undefined
+      })
+      if (res.code === 200 && res.data) {
+        userInfo.value = res.data
+        userStore.setUser({
+          userId: res.data._id,
+          openid: res.data.openid,
+          nickname: res.data.nickname,
+          avatar: res.data.avatar,
+          phone: res.data.phone,
+          isDistributor: res.data.isDistributor
+        })
+        await loadUserData()
+        showLoginModal.value = false
+        uni.showToast({ title: '登录成功', icon: 'success' })
+      } else {
+        uni.showToast({ title: res.message || '登录失败', icon: 'none' })
+      }
     }
   } catch (e) {
     console.error('登录失败:', e)
@@ -467,7 +559,7 @@ function goToWithdraw() {
     showLoginModal.value = true
     return
   }
-  uni.showToast({ title: '提现功能开发中', icon: 'none' })
+  uni.navigateTo({ url: '/pages/withdraw/withdraw' })
 }
 
 function goToCommissionDetail() {
@@ -475,7 +567,7 @@ function goToCommissionDetail() {
     showLoginModal.value = true
     return
   }
-  uni.showToast({ title: '明细功能开发中', icon: 'none' })
+  uni.navigateTo({ url: '/pages/commission/commission' })
 }
 
 function goToWithdrawRecord() {
@@ -484,6 +576,24 @@ function goToWithdrawRecord() {
     return
   }
   uni.showToast({ title: '提现记录开发中', icon: 'none' })
+}
+
+const callButler = () => {
+  if (!homeConfig.value.butlerPhones) { uni.showToast({ title: '暂无可用电话', icon: 'none' }); return }
+  const phones = homeConfig.value.butlerPhones.split(',').filter(p => p.trim())
+  if (phones.length === 1) { uni.makePhoneCall({ phoneNumber: phones[0].trim() }) }
+  else { uni.showActionSheet({ itemList: phones.map((p, i) => `电话${i+1}: ${p.trim()}`), success: (r) => { if (r.tapIndex >= 0) uni.makePhoneCall({ phoneNumber: phones[r.tapIndex].trim() }) } }) }
+}
+const contactButler = () => {
+  const wechats = (homeConfig.value.butlerWechats || '').split(',').filter(p => p.trim())
+  if (!wechats.length) { uni.showToast({ title: '暂无可用微信号', icon: 'none' }); return }
+  const chosen = wechats[Math.floor(Math.random() * wechats.length)].trim()
+  uni.setClipboardData({ data: chosen, success: () => uni.showToast({ title: `微信号 ${chosen} 已复制`, icon: 'success' }) })
+}
+const openGzhModal = () => {
+  // 跳转到公众号文章页，文章顶部有关注入口
+  const articleUrl = 'https://mp.weixin.qq.com/s/D5K_C4bHV97mVvy7MjQ2ZA'
+  uni.navigateTo({ url: '/pages/webview/webview?url=' + encodeURIComponent(articleUrl) })
 }
 
 const menuList = [
@@ -507,8 +617,34 @@ const handleMenu = (action) => {
     uni.navigateTo({ url: '/pages/import/import' })
     return
   }
-  const titles = { orders: '我的订单', team: '我的团队', commission: '佣金明细', invite: '邀请好友', poster: '推广海报', cpsOrder: 'CPS订单', settings: '设置' }
-  uni.showToast({ title: `${titles[action]}开发中`, icon: 'none' })
+  if (action === 'orders') {
+    uni.navigateTo({ url: '/pages/order/order' })
+    return
+  }
+  if (action === 'team') {
+    uni.navigateTo({ url: '/pages/team/team' })
+    return
+  }
+  if (action === 'poster') {
+    uni.navigateTo({ url: '/pages/share/share' })
+    return
+  }
+  if (action === 'commission') {
+    uni.navigateTo({ url: '/pages/commission/commission' })
+    return
+  }
+  if (action === 'invite') {
+    uni.navigateTo({ url: '/pages/share/share' })
+    return
+  }
+  if (action === 'cpsOrder') {
+    uni.navigateTo({ url: '/pages/cps/cps' })
+    return
+  }
+  if (action === 'settings') {
+    uni.navigateTo({ url: '/pages/settings/settings' })
+    return
+  }
 }
 </script>
 
@@ -633,11 +769,14 @@ const handleMenu = (action) => {
 .login-tabs { display: flex; background: #f5f7fa; border-radius: 16rpx; padding: 6rpx; margin-bottom: 24rpx; }
 .login-tab { flex: 1; text-align: center; padding: 18rpx 0; font-size: 26rpx; color: #666; border-radius: 10rpx; font-weight: 500; transition: all 0.3s; }
 .login-tab.active { background: #fff; color: #667eea; font-weight: 600; box-shadow: 0 2rpx 8rpx rgba(102,126,234,0.2); }
-.phone-form { }
-.phone-input-wrap { margin-bottom: 16rpx; }
-.phone-input, .sms-input { background: #f8f9fa; border-radius: 12rpx; padding: 20rpx 24rpx; font-size: 28rpx; width: 100%; box-sizing: border-box; }
-.sms-input-wrap { display: flex; gap: 12rpx; margin-bottom: 20rpx; }
-.sms-input { flex: 1; }
+.phone-form { width: 100%; box-sizing: border-box; }
+.bind-phone-hint { display: flex; align-items: center; justify-content: center; gap: 8rpx; background: #fff8e6; border-radius: 12rpx; padding: 16rpx 24rpx; margin-bottom: 24rpx; }
+.bind-phone-hint .hint-icon { font-size: 28rpx; }
+.bind-phone-hint .hint-text { font-size: 24rpx; color: #ff9500; font-weight: bold; }
+.phone-input-wrap { width: 100% !important; max-width: 100% !important; margin-bottom: 16rpx; box-sizing: border-box; display: block; }
+.phone-input { display: block !important; width: 100% !important; max-width: 100% !important; background: #f8f9fa; border-radius: 12rpx; padding: 20rpx 24rpx; font-size: 28rpx; box-sizing: border-box; text-align: left !important; }
+.sms-input-wrap { display: flex !important; gap: 12rpx; margin-bottom: 20rpx; width: 100% !important; max-width: 100% !important; box-sizing: border-box; }
+.sms-input { flex: 1 !important; min-width: 0; background: #f8f9fa; border-radius: 12rpx; padding: 20rpx 24rpx; font-size: 28rpx; box-sizing: border-box; text-align: left !important; }
 .sms-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; font-size: 24rpx; font-weight: bold; padding: 0 24rpx; border-radius: 12rpx; border: none; white-space: nowrap; }
 .sms-btn::after { border: none; }
 .sms-btn[disabled] { background: #ccc; }
@@ -673,4 +812,42 @@ const handleMenu = (action) => {
 }
 .pay-btn::after { border: none; }
 .pay-tip { font-size: 22rpx; color: #999; text-align: center; }
+
+/* 管家卡片 */
+.butler-card {
+  background: #fff; margin: 20rpx 30rpx; border-radius: 20rpx; padding: 24rpx;
+  box-shadow: 0 4rpx 20rpx rgba(102,126,234,0.12); display: flex; align-items: center; gap: 24rpx;
+}
+.butler-left { position: relative; flex-shrink: 0; }
+.butler-badge {
+  position: absolute; bottom: -4rpx; left: 50%; transform: translateX(-50%);
+  background: linear-gradient(135deg, #ffd700, #ff9500); color: #fff; font-size: 18rpx; padding: 4rpx 12rpx; border-radius: 16rpx; white-space: nowrap;
+}
+.butler-avatar { width: 100rpx; height: 100rpx; border-radius: 50%; background: #eee; border: 3rpx solid #f0f0f0; }
+.butler-info { flex: 1; min-width: 0; }
+.butler-name { display: block; font-size: 30rpx; font-weight: bold; color: #333; }
+.butler-desc { font-size: 22rpx; color: #888; margin-top: 4rpx; }
+.butler-stats { display: flex; gap: 30rpx; margin-top: 10rpx; }
+.butler-stats .stat { display: flex; flex-direction: column; }
+.stat-num { font-size: 26rpx; font-weight: bold; color: #667eea; }
+.stat-label { font-size: 20rpx; color: #999; }
+.butler-actions { display: flex; gap: 12rpx; flex-shrink: 0; }
+.action-btn { display: flex; flex-direction: column; align-items: center; gap: 4rpx; padding: 16rpx 18rpx; border-radius: 12rpx; font-size: 20rpx; }
+.action-btn.phone { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+.action-btn.message { background: linear-gradient(135deg, #ff9500, #ff6b00); color: #fff; }
+.action-btn.wechat { background: linear-gradient(135deg, #07c160, #06ad56); color: #fff; }
+.btn-icon { font-size: 28rpx; }
+.btn-text { font-size: 18rpx; }
+
+/* 公众号 */
+.official-account {
+  background: #fff; margin: 0 30rpx 20rpx; border-radius: 20rpx; padding: 28rpx;
+  display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05);
+}
+.oa-content { display: flex; align-items: center; gap: 20rpx; }
+.oa-icon-wrap { width: 72rpx; height: 72rpx; display: flex; align-items: center; justify-content: center; background: #f5f5f5; border-radius: 16rpx; }
+.oa-icon { font-size: 36rpx; }
+.oa-title { display: block; font-size: 28rpx; font-weight: bold; color: #333; }
+.oa-desc { font-size: 22rpx; color: #999; }
+.oa-arrow { font-size: 40rpx; color: #ccc; }
 </style>

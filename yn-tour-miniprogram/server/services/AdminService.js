@@ -176,6 +176,28 @@ class AdminService {
   }
 
   /**
+   * 导出订单（CSV格式，供ERP使用）
+   */
+  static async exportOrders(status = 'paid') {
+    try {
+      const query = { status }
+
+      const list = await Order.find(query)
+        .sort({ createdAt: -1 })
+        .limit(5000)
+        .populate('userId', 'nickname phone')
+
+      // 过滤掉没有收货地址的订单（无法发货）
+      const shippable = list.filter(o => o.deliveryAddress && o.deliveryAddress.receiverName)
+
+      return { success: true, data: shippable }
+    } catch (error) {
+      console.error('[管理后台] 导出订单失败:', error)
+      return { success: false, message: error.message }
+    }
+  }
+
+  /**
    * 获取营收统计（按日期）
    */
   static async getRevenueStats(startDate, endDate) {

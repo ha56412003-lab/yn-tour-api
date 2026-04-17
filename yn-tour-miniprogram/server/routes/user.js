@@ -574,8 +574,8 @@ router.get('/poster-image', async (req, res) => {
     // 第二步：绘制海报 (540 x 886 px)
     // 海报组成：背景图 + 淡绿色叠加层 + 右下角二维码
     // =============================================
-    const W = 400
-    const H = 656  // 等比例缩放: 400 * (886/540) ≈ 656
+    const W = 540
+    const H = 886
 
     // 加载背景图
     const bgDir = path.join(__dirname, '../uploads/backgrounds')

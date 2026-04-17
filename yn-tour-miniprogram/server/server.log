@@ -1,0 +1,9 @@
+🚀 服务已启动: http://localhost:3000
+📋 API接口清单:
+   - 用户: /api/user/*
+   - 订单: /api/order/*
+   - 商品: /api/product/*
+   - 提现: /api/withdraw/*
+   - 管理: /api/admin/*
+✅ MongoDB 连接成功
+📦 商品数据已存在，跳过初始化

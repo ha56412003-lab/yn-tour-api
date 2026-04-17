@@ -10,7 +10,7 @@ const PaymentService = require('../services/PaymentService')
 // 创建订单
 router.post('/create', async (req, res) => {
   try {
-    const { userId, productId, quantity, travelers, travelDate, referrerId } = req.body
+    const { userId, productId, quantity, travelers, travelDate, referrerId, deliveryAddress } = req.body
     
     // 获取商品信息
     const product = await Product.findById(productId)
@@ -42,6 +42,7 @@ router.post('/create', async (req, res) => {
       travelers,
       travelDate,
       status: 'pending',
+      deliveryAddress, // 旅游卡收货地址
       'distribution.isSelfOrder': user.selfOrderNum === 0 // 如果是第一单，标记为自购单
     }
     
@@ -302,6 +303,83 @@ router.post('/ship', async (req, res) => {
         expressCompany,
         expressNo,
         shippedAt: order.shippedAt
+      }
+    })
+  } catch (err) {
+    res.json({ code: 500, message: err.message })
+  }
+})
+
+// 物流查询
+router.get('/logistics', async (req, res) => {
+  try {
+    const { expressCompany, expressNo } = req.query
+
+    if (!expressCompany || !expressNo) {
+      return res.json({ code: 400, message: '缺少快递公司或单号' })
+    }
+
+    // 快递公司编码映射
+    const companyMap = {
+      '顺丰': 'shunfeng',
+      '申通': 'shentong',
+      '中通': 'zhongtong',
+      '圆通': 'yuantong',
+      '韵达': 'yunda',
+      '京东': 'jd',
+      '邮政': 'youzheng',
+      'EMS': 'ems',
+      '天天': 'tiantian',
+      '汇通': 'huitong',
+      '全峰': 'quanfeng',
+      '德邦': 'debang'
+    }
+
+    const provider = companyMap[expressCompany] || 'auto'
+
+    // 优先使用快递100免费查询
+    try {
+      const response = await fetch(`http://www.kuaidi100.com/query?type=${provider}&postid=${expressNo}&temp=${Date.now()}&phone=`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      })
+      const text = await response.text()
+
+      // 快递100返回的是非标准JSON格式，需要解析
+      if (text && !text.includes('errors')) {
+        const data = JSON.parse(text)
+        if (data.status === '200' && data.data) {
+          return res.json({
+            code: 200,
+            data: {
+              company: expressCompany,
+              no: expressNo,
+              tracks: data.data.map(item => ({
+                time: item.time,
+                status: item.context,
+                location: item.location || ''
+              }))
+            }
+          })
+        }
+      }
+    } catch (apiErr) {
+      console.log('[物流] 快递100查询失败，使用本地数据', apiErr.message)
+    }
+
+    // 降级：如果API失败，用订单的shippedAt生成一个基准轨迹
+    // 实际项目中，管理员在ERP发货时会录入更详细的物流节点
+    res.json({
+      code: 200,
+      data: {
+        company: expressCompany,
+        no: expressNo,
+        tracks: [
+          {
+            time: new Date().toLocaleString('zh-CN'),
+            status: `包裹已从【${expressCompany}】发出，快递单号：${expressNo}`,
+            location: ''
+          }
+        ]
       }
     })
   } catch (err) {

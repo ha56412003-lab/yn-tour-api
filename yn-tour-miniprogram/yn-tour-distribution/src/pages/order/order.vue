@@ -122,6 +122,24 @@
 							<text class="info-label">快递单号</text>
 							<text class="info-value">{{ selectedOrder.expressNo }}</text>
 						</view>
+						<view class="logistics-query-row">
+							<button class="query-btn" size="mini" :loading="logisticsLoading" @click="queryLogistics">
+								{{ logisticsTracks.length > 0 ? '刷新物流' : '查询物流' }}
+							</button>
+						</view>
+						<!-- 物流轨迹 -->
+						<view class="logistics-tracks" v-if="logisticsTracks.length > 0">
+							<view class="track-item" v-for="(track, index) in logisticsTracks" :key="index" :class="{ latest: index === 0 }">
+								<view class="track-dot"></view>
+								<view class="track-content">
+									<text class="track-status">{{ track.status }}</text>
+									<text class="track-time">{{ track.time }}</text>
+								</view>
+							</view>
+						</view>
+						<view class="logistics-empty" v-else-if="logisticsLoading">
+							<text class="loading-text">查询中...</text>
+						</view>
 					</view>
 					
 					<!-- 收货地址 -->
@@ -176,104 +194,112 @@
 </template>
 
 <script setup>
-	import { ref, computed } from 'vue'
+import { ref, computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '../../store/user'
+import { getOrderList, mockPay, getLogistics } from '../../api/order'
 
-	const currentTab = ref(0)
-	const tabs = ['全部', '待支付', '已支付', '处理中']
-	
-	// 当前登录用户ID（测试用）
-	const currentUserId = computed(() => userStore.state.userId || 'mock_user_' + Date.now()).value
+const userStore = useUserStore()
 
-	const orderList = ref([])
-	const showDetail = ref(false)
-	const selectedOrder = ref(null)
+const currentTab = ref(0)
+const tabs = ['全部', '待支付', '已支付', '处理中']
 
-	// 页面显示时加载订单
-	onShow(() => {
-		loadOrders()
-	})
+const orderList = ref([])
+const showDetail = ref(false)
+const selectedOrder = ref(null)
+const logisticsTracks = ref([])
+const logisticsLoading = ref(false)
 
-	const filteredOrders = computed(() => {
-		if (currentTab.value === 0) return orderList.value
-		if (currentTab.value === 1) return orderList.value.filter(o => o.status === 'pending')
-		if (currentTab.value === 2) return orderList.value.filter(o => o.status === 'paid')
-		if (currentTab.value === 3) return orderList.value.filter(o => o.status === 'processing' || o.deliveryStatus === 'shipped')
-		return orderList.value
-	})
+onShow(() => {
+  if (userStore.state.isLoggedIn) {
+    loadOrders()
+  }
+})
 
-	const loadOrders = async () => {
-		try {
-			const res = await new Promise((resolve) => {
-				uni.request({
-					url: 'http://localhost:3000/api/order/list',
-					method: 'GET',
-					data: { userId: userStore.state.userId },
-					success: resolve,
-					fail: resolve
-				})
-			})
-			// @ts-ignore
-			if (res?.data?.code === 200) {
-				// @ts-ignore
-				orderList.value = res.data.data.list || []
-			}
-		} catch (e) {
-			console.error('加载订单失败', e)
-		}
-	}
+const filteredOrders = computed(() => {
+  if (currentTab.value === 0) return orderList.value
+  if (currentTab.value === 1) return orderList.value.filter(o => o.status === 'pending')
+  if (currentTab.value === 2) return orderList.value.filter(o => o.status === 'paid')
+  if (currentTab.value === 3) return orderList.value.filter(o => o.status === 'processing' || o.deliveryStatus === 'shipped')
+  return orderList.value
+})
 
-	const switchTab = (index) => {
-		currentTab.value = index
-	}
+const loadOrders = async () => {
+  try {
+    const userId = userStore.state.userId
+    if (!userId) return
+    const res = await getOrderList({ userId })
+    if (res.code === 200) {
+      orderList.value = res.data?.list || []
+    }
+  } catch (e) {
+    console.error('加载订单失败', e)
+  }
+}
 
-	const showOrderDetail = (order) => {
-		selectedOrder.value = order
-		showDetail.value = true
-	}
+const switchTab = (index) => {
+  currentTab.value = index
+}
 
-	const goToPay = (order) => {
-		uni.showModal({
-			title: '选择支付方式',
-			content: `订单号: ${order.orderNo}\n金额: ¥${order.totalAmount}`,
-			confirmText: '微信支付',
-			cancelText: '支付宝',
-			success: async (res) => {
-				if (res.confirm) {
-					await mockPay(order._id, 'wechat')
-				} else {
-					await mockPay(order._id, 'alipay')
-				}
-			}
-		})
-	}
+const showOrderDetail = (order) => {
+  selectedOrder.value = order
+  logisticsTracks.value = []
+  showDetail.value = true
+}
 
-	const mockPay = async (orderId, payMethod) => {
-		uni.showLoading({ title: '支付中...' })
-		try {
-			const res = await new Promise((resolve) => {
-				uni.request({
-					url: 'http://localhost:3000/api/order/mock-pay',
-					method: 'POST',
-					data: { orderId, paymentMethod: payMethod },
-					success: resolve,
-					fail: resolve
-				})
-			})
-			uni.hideLoading()
-			// @ts-ignore
-			if (res?.data?.code === 200) {
-				uni.showToast({ title: '支付成功', icon: 'success' })
-				loadOrders()
-			} else {
-				uni.showToast({ title: '支付成功（模拟）', icon: 'success' })
-				loadOrders()
-			}
-		} catch (e) {
-			uni.hideLoading()
-			uni.showToast({ title: '支付失败', icon: 'none' })
-		}
-	}
+const queryLogistics = async () => {
+  if (!selectedOrder.value?.expressCompany || !selectedOrder.value?.expressNo) return
+  logisticsLoading.value = true
+  try {
+    const res = await getLogistics({
+      expressCompany: selectedOrder.value.expressCompany,
+      expressNo: selectedOrder.value.expressNo
+    })
+    if (res.code === 200 && res.data?.tracks) {
+      logisticsTracks.value = res.data.tracks
+    } else {
+      uni.showToast({ title: '查询失败', icon: 'none' })
+    }
+  } catch (e) {
+    uni.showToast({ title: '查询失败', icon: 'none' })
+  } finally {
+    logisticsLoading.value = false
+  }
+}
+
+const goToPay = (order) => {
+  uni.showModal({
+    title: '选择支付方式',
+    content: `订单号: ${order.orderNo}\n金额: ¥${order.totalAmount}`,
+    confirmText: '微信支付',
+    cancelText: '支付宝',
+    success: async (res) => {
+      if (res.confirm) {
+        await handlePay(order._id, 'wechat')
+      } else {
+        await handlePay(order._id, 'alipay')
+      }
+    }
+  })
+}
+
+const handlePay = async (orderId, payMethod) => {
+  uni.showLoading({ title: '支付中...' })
+  try {
+    const res = await mockPay({ orderId, paymentMethod: payMethod })
+    uni.hideLoading()
+    if (res.code === 200) {
+      uni.showToast({ title: '支付成功', icon: 'success' })
+      showDetail.value = false
+      loadOrders()
+    } else {
+      uni.showToast({ title: res.message || '支付失败', icon: 'none' })
+    }
+  } catch (e) {
+    uni.hideLoading()
+    uni.showToast({ title: '支付失败', icon: 'none' })
+  }
+}
 
 	const getStatusClass = (order) => {
 		if (order.status === 'completed') return 'completed'
@@ -675,6 +701,98 @@ import { useUserStore } from '../../store/user'
 		color: #333;
 		max-width: 65%;
 		text-align: right;
+	}
+
+	.logistics-query-row {
+		display: flex;
+		justify-content: flex-end;
+		margin-top: 12rpx;
+	}
+
+	.query-btn {
+		background: linear-gradient(135deg, #ff6600, #ff8c00);
+		color: #fff;
+		font-size: 22rpx;
+		padding: 0 20rpx;
+		height: 52rpx;
+		line-height: 52rpx;
+		border-radius: 26rpx;
+	}
+
+	.logistics-tracks {
+		margin-top: 20rpx;
+		padding: 10rpx 0;
+	}
+
+	.track-item {
+		display: flex;
+		align-items: flex-start;
+		padding: 10rpx 0;
+		position: relative;
+	}
+
+	.track-item::before {
+		content: '';
+		position: absolute;
+		left: 10rpx;
+		top: 30rpx;
+		width: 1rpx;
+		height: calc(100% - 20rpx);
+		background: #eee;
+	}
+
+	.track-item:last-child::before {
+		display: none;
+	}
+
+	.track-dot {
+		width: 16rpx;
+		height: 16rpx;
+		border-radius: 50%;
+		background: #ccc;
+		margin-right: 16rpx;
+		margin-top: 6rpx;
+		flex-shrink: 0;
+		position: relative;
+		z-index: 1;
+	}
+
+	.track-item.latest .track-dot {
+		background: #ff6600;
+		box-shadow: 0 0 0 4rpx rgba(255,102,0,0.2);
+	}
+
+	.track-content {
+		flex: 1;
+	}
+
+	.track-status {
+		display: block;
+		font-size: 24rpx;
+		color: #666;
+		line-height: 1.5;
+	}
+
+	.track-item.latest .track-status {
+		color: #ff6600;
+		font-weight: bold;
+	}
+
+	.track-time {
+		display: block;
+		font-size: 22rpx;
+		color: #999;
+		margin-top: 4rpx;
+	}
+
+	.logistics-empty {
+		text-align: center;
+		padding: 20rpx 0;
+	}
+
+	.loading-text {
+		font-size: 24rpx;
+		color: #999;
 	}
 
 	.product-card {

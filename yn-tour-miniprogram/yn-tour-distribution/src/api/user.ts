@@ -119,6 +119,21 @@ export function calculateWithdraw(params: { userId: string }) {
   }>('/user/calculate-withdraw', params)
 }
 
+// 用户申请提现
+export function applyWithdraw(data: {
+  userId: string
+  withdrawMethod: string
+  accountInfo: any
+  amount: number
+}) {
+  return post('/withdraw/apply', data)
+}
+
+// 获取用户提现记录
+export function getWithdrawList(params: { userId: string; page?: number; limit?: number; status?: string }) {
+  return get('/withdraw/list', params)
+}
+
 // 获取收益明细
 export function getCommissionList(params: { 
   userId: string

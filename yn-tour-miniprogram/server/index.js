@@ -12,6 +12,10 @@ const withdrawRoutes = require('./routes/withdraw')
 const adminRoutes = require('./routes/admin')
 const importRoutes = require('./routes/import')
 const authRoutes = require('./routes/auth')
+const galleryRoutes = require('./routes/gallery')
+const homeConfigRoutes = require('./routes/homeConfig')
+const reviewRoutes = require('./routes/review')
+const itineraryRoutes = require('./routes/itinerary')
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -35,6 +39,10 @@ app.use('/api/withdraw', withdrawRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/import', importRoutes)
 app.use('/api/auth', authRoutes)
+app.use('/api/gallery', galleryRoutes)
+app.use('/api/homeConfig', homeConfigRoutes)
+app.use('/api/review', reviewRoutes)
+app.use('/api/itinerary', itineraryRoutes)
 
 // 健康检查
 app.get('/health', (req, res) => {

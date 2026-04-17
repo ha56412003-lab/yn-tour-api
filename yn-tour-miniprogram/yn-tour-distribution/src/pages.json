@@ -35,13 +35,7 @@
 				"navigationStyle": "custom"
 			}
 		},
-		{
-			"path": "pages/booking/booking",
-			"style": {
-				"navigationBarTitleText": "预约出行",
-				"navigationStyle": "custom"
-			}
-		},
+
 		{
 			"path": "pages/user/user",
 			"style": {
@@ -71,6 +65,24 @@
 			"path": "pages/order/order",
 			"style": {
 				"navigationBarTitleText": "我的订单"
+			}
+		},
+		{
+			"path": "pages/commission/commission",
+			"style": {
+				"navigationBarTitleText": "佣金明细"
+			}
+		},
+		{
+			"path": "pages/settings/settings",
+			"style": {
+				"navigationBarTitleText": "设置"
+			}
+		},
+		{
+			"path": "pages/withdraw/withdraw",
+			"style": {
+				"navigationBarTitleText": "提现"
 			}
 		},
 		{
@@ -144,14 +156,9 @@
 				"pagePath": "pages/help/help",
 				"iconPath": "static/tab-help.png",
 				"selectedIconPath": "static/tab-help-active.png",
-				"text": "帮助"
+				"text": "详细文档"
 			},
-			{
-				"pagePath": "pages/booking/booking",
-				"iconPath": "static/tab-booking.png",
-				"selectedIconPath": "static/tab-booking-active.png",
-				"text": "预约"
-			},
+
 			{
 				"pagePath": "pages/user/user",
 				"iconPath": "static/tab-user.png",

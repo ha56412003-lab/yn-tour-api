@@ -77,3 +77,12 @@ export function getOrderDetail(params: { orderId: string }) {
 export function cancelOrder(data: { orderId: string }) {
   return post('/order/cancel', data)
 }
+
+// 物流查询
+export function getLogistics(params: { expressCompany: string; expressNo: string }) {
+  return get<{
+    company: string
+    no: string
+    tracks: { time: string; status: string; location: string }[]
+  }>('/order/logistics', params)
+}
