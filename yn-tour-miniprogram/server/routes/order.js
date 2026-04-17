@@ -1,16 +1,26 @@
 // 订单相关API
 const express = require('express')
 const router = express.Router()
+const jwt = require('jsonwebtoken')
 const Order = require('../models/Order')
 const Product = require('../models/Product')
 const User = require('../models/User')
 const DistributionService = require('../services/DistributionService')
 const PaymentService = require('../services/PaymentService')
+const userAuth = require('../middleware/userAuth')
+const adminAuth = require('../middleware/adminAuth')
+
+const JWT_SECRET = process.env.JWT_SECRET || 'haha-jwt-secret-2026'
+
+function signToken(userId) {
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '30d' })
+}
 
 // 创建订单
-router.post('/create', async (req, res) => {
+router.post('/create', userAuth, async (req, res) => {
   try {
-    const { userId, productId, quantity, travelers, travelDate, referrerId, deliveryAddress } = req.body
+    const userId = req.headers['x-user-id']
+    const { productId, quantity, travelers, travelDate, referrerId, deliveryAddress } = req.body
     
     // 获取商品信息
     const product = await Product.findById(productId)
@@ -87,9 +97,19 @@ router.post('/create', async (req, res) => {
 })
 
 // 创建支付订单
-router.post('/create-payment', async (req, res) => {
+router.post('/create-payment', userAuth, async (req, res) => {
   try {
+    const userId = req.headers['x-user-id']
     const { orderId, paymentMethod } = req.body
+    
+    // 验证订单归属
+    const order = await Order.findById(orderId)
+    if (!order) {
+      return res.json({ code: 404, message: '订单不存在' })
+    }
+    if (order.userId.toString() !== userId) {
+      return res.status(403).json({ code: 403, message: '无权操作此订单' })
+    }
     
     let result
     if (paymentMethod === 'wechat') {
@@ -120,10 +140,20 @@ if (process.env.NODE_ENV === 'production') {
     res.status(403).json({ code: 403, message: '测试接口，禁止在生产环境调用' })
   })
 } else {
-  router.post('/mock-pay', async (req, res) => {
+  router.post('/mock-pay', userAuth, async (req, res) => {
     try {
+      const userId = req.headers['x-user-id']
       const { orderId, paymentMethod } = req.body
-
+      
+      // 验证订单归属
+      const chkOrder = await Order.findById(orderId)
+      if (!chkOrder) {
+        return res.json({ code: 404, message: '订单不存在' })
+      }
+      if (chkOrder.userId.toString() !== userId) {
+        return res.status(403).json({ code: 403, message: '无权操作此订单' })
+      }
+      
       const result = await PaymentService.mockPaymentSuccess(orderId, paymentMethod)
       if (!result.success) {
         return res.json({ code: 400, message: result.message })
@@ -199,9 +229,18 @@ router.post('/alipay-callback', async (req, res) => {
 })
 
 // 查询支付状态
-router.get('/pay-status', async (req, res) => {
+router.get('/pay-status', userAuth, async (req, res) => {
   try {
+    const userId = req.headers['x-user-id']
     const { orderId } = req.query
+    
+    const order = await Order.findById(orderId)
+    if (!order) {
+      return res.json({ code: 404, message: '订单不存在' })
+    }
+    if (order.userId.toString() !== userId) {
+      return res.status(403).json({ code: 403, message: '无权查看此订单' })
+    }
     
     const result = await PaymentService.queryPaymentStatus(orderId)
     if (!result.success) {
@@ -218,9 +257,10 @@ router.get('/pay-status', async (req, res) => {
 })
 
 // 获取订单列表
-router.get('/list', async (req, res) => {
+router.get('/list', userAuth, async (req, res) => {
   try {
-    const { userId, status, page = 1, limit = 20 } = req.query
+    const userId = req.headers['x-user-id']
+    const { status, page = 1, limit = 20 } = req.query
     
     const query = { userId }
     if (status && status !== 'all') {
@@ -252,14 +292,18 @@ router.get('/list', async (req, res) => {
 })
 
 // 获取订单详情
-router.get('/detail', async (req, res) => {
+router.get('/detail', userAuth, async (req, res) => {
   try {
+    const userId = req.headers['x-user-id']
     const { orderId } = req.query
     
     const order = await Order.findById(orderId).populate('userId', 'nickname')
     
     if (!order) {
       return res.json({ code: 404, message: '订单不存在' })
+    }
+    if (order.userId._id.toString() !== userId && order.userId.toString() !== userId) {
+      return res.status(403).json({ code: 403, message: '无权查看此订单' })
     }
     
     res.json({
@@ -272,13 +316,17 @@ router.get('/detail', async (req, res) => {
 })
 
 // 取消订单
-router.post('/cancel', async (req, res) => {
+router.post('/cancel', userAuth, async (req, res) => {
   try {
+    const userId = req.headers['x-user-id']
     const { orderId } = req.body
     
     const order = await Order.findById(orderId)
     if (!order) {
       return res.json({ code: 404, message: '订单不存在' })
+    }
+    if (order.userId.toString() !== userId) {
+      return res.status(403).json({ code: 403, message: '无权取消此订单' })
     }
     
     if (order.status !== 'pending') {
@@ -298,7 +346,7 @@ router.post('/cancel', async (req, res) => {
 })
 
 // 发货（旅游卡邮寄）
-router.post('/ship', async (req, res) => {
+router.post('/ship', adminAuth, async (req, res) => {
   try {
     const { orderId, expressCompany, expressNo } = req.body
     

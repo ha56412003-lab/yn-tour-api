@@ -287,9 +287,9 @@ router.get('/my-team', userAuth, async (req, res) => {
 })
 
 // 获取用户专属分享码
-router.get('/share-code', async (req, res) => {
+router.get('/share-code', userAuth, async (req, res) => {
   try {
-    const { userId } = req.query
+    const userId = req.headers['x-user-id']
     const user = await User.findById(userId)
     
     if (!user) {
@@ -342,9 +342,9 @@ router.get('/share-code', async (req, res) => {
 })
 
 // 生成带小程序码的分享海报
-router.get('/generate-poster', async (req, res) => {
+router.get('/generate-poster', userAuth, async (req, res) => {
   try {
-    const { userId } = req.query
+    const userId = req.headers['x-user-id']
     const user = await User.findById(userId)
     
     if (!user) {
@@ -411,8 +411,9 @@ function wxPost(url, body) {
 }
 
 // 生成二维码（用于分享海报）
-router.get('/qrcode', async (req, res) => {
+router.get('/qrcode', userAuth, async (req, res) => {
   try {
+    const userId = req.headers['x-user-id']
     const { text, size = 150 } = req.query
     if (!text) {
       return res.json({ code: 400, message: 'text 参数不能为空' })
@@ -434,9 +435,9 @@ router.get('/qrcode', async (req, res) => {
 
 // 生成完整海报图片（后端合成，绕过前端canvas问题）
 // 修复：改用微信官方 wxacode.get API 生成小程序码
-router.get('/poster-image', async (req, res) => {
+router.get('/poster-image', userAuth, async (req, res) => {
   try {
-    const { userId } = req.query
+    const userId = req.headers['x-user-id']
     if (!userId) {
       return res.json({ code: 400, message: 'userId 参数不能为空' })
     }
