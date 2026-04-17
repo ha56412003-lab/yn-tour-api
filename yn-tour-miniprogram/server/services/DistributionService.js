@@ -3,7 +3,6 @@ const User = require('../models/User')
 const Order = require('../models/Order')
 const Commission = require('../models/Commission')
 const PlatformStats = require('../models/PlatformStats')
-const VisitRecord = require('../models/VisitRecord')
 const Product = require('../models/Product')
 
 class DistributionService {
@@ -387,75 +386,6 @@ class DistributionService {
       dividendPool,
       userCount: results.length,
       results
-    }
-  }
-
-  /**
-   * 计算有效访问奖
-   * 奖励规则：0.5元/次，每日上限20元
-   */
-  static async calculateValidVisitAward(userId, visitRecord) {
-    const user = await User.findById(userId)
-    if (!user) {
-      return { success: false, message: '用户不存在' }
-    }
-
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    // 检查是否是今日的奖励
-    const lastAwardDate = user.lastVisitAwardDate ? new Date(user.lastVisitAwardDate) : null
-    if (lastAwardDate && lastAwardDate.toDateString() === today.toDateString()) {
-      // 今日已获得过奖励，检查是否超过上限
-      if (user.validVisitNum >= 40) { // 20元 / 0.5元 = 40次
-        return { success: false, message: '今日访问奖已达上限' }
-      }
-    } else {
-      // 新的一天，重置计数
-      user.validVisitNum = 0
-      user.lastVisitAwardDate = today
-    }
-
-    const awardPerVisit = 0.5
-    const dailyMaxAward = 20
-
-    // 计算此次奖励
-    const currentAward = awardPerVisit
-    const totalAwardToday = (user.validVisitNum * awardPerVisit) + currentAward
-
-    if (totalAwardToday > dailyMaxAward) {
-      return { success: false, message: '今日访问奖已达上限' }
-    }
-
-    // 更新用户访问数
-    user.validVisitNum = (user.validVisitNum || 0) + 1
-    await user.save()
-
-    // 创建访问奖记录
-    await Commission.create({
-      userId: userId,
-      orderId: visitRecord._id,
-      type: 'bonus',
-      amount: currentAward,
-      relatedUserId: visitRecord.userId,
-      status: 'settled',
-      settledAt: new Date(),
-      description: `有效访问奖 - 第${user.validVisitNum}次`
-    })
-
-    // 更新用户收益
-    await User.findByIdAndUpdate(userId, {
-      $inc: {
-        totalEarnings: currentAward,
-        availableBalance: currentAward
-      }
-    })
-
-    return {
-      success: true,
-      award: currentAward,
-      totalAwardToday,
-      visitNum: user.validVisitNum
     }
   }
 

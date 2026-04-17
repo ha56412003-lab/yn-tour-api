@@ -3,7 +3,6 @@ const express = require('express')
 const router = express.Router()
 const User = require('../models/User')
 const DistributionService = require('../services/DistributionService')
-const VisitRecord = require('../models/VisitRecord')
 const Background = require('../models/Background')
 const https = require('https')
 
