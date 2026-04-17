@@ -37,8 +37,7 @@
     <view class="earnings-card">
       <view class="earnings-header">
         <text class="earnings-label">我的收益</text>
-        <text class="earnings-withdraw" @click="goToWithdrawRecord">提现 ›</text>
-      </view>
+              </view>
       <view class="earnings-amount">¥<text class="amount-num">{{ earnings.availableCommission || '0.00' }}</text></view>
       <view class="earnings-btns">
         <button class="earnings-btn primary" @click="goToWithdraw">提现</button>
@@ -106,10 +105,10 @@
     <view class="open-card" v-if="isLoggedIn && !userInfo.isDistributor">
       <view class="open-header">
         <text class="open-icon">🌟</text>
-        <text class="open-title">成为分销商，开启躺赚之旅</text>
+        <text class="open-title">成为分销商,开启躺赚之旅</text>
       </view>
       <view class="open-desc">
-        <text>购买799元旅游套餐，即可成为分销商，享受：</text>
+        <text>购买799元旅游套餐,即可成为分销商,享受:</text>
         <view class="open-item">• 直推30%+70%分佣</view>
         <view class="open-item">• 间推10%分佣</view>
         <view class="open-item">• 7人成团额外800元</view>
@@ -118,7 +117,7 @@
       <view class="open-action">
         <button class="open-btn" @click="openDistributor">立即开通 ¥799</button>
       </view>
-      <view class="open-alt" @click="goToImport">已有订单？导入订单免费开通</view>
+      <view class="open-alt" @click="goToImport">已有订单?导入订单免费开通</view>
     </view>
 
     <!-- 分销规则 -->
@@ -129,16 +128,64 @@
       </view>
       <view class="rule-list">
         <view class="rule-item">
-          <view class="rule-level level-1">一级分销</view>
-          <view class="rule-desc">直推奖励 30% = ¥239.7/单</view>
+          <view class="rule-level level-1">279分佣</view>
+          <view class="rule-desc">单数循环：奇数单30%=¥239.7，偶数单70%=¥559.3</view>
         </view>
         <view class="rule-item">
-          <view class="rule-level level-2">二级分销</view>
-          <view class="rule-desc">间推奖励 70% = ¥559.3/单</view>
+          <view class="rule-level level-2">成团奖</view>
+          <view class="rule-desc">7人成团，奖励800元/团</view>
         </view>
         <view class="rule-item">
-          <view class="rule-level level-3">裂变奖励</view>
-          <view class="rule-desc">用户下单后自动发放佣金</view>
+          <view class="rule-level level-3">平台分红</view>
+          <view class="rule-desc">直推≥2或成团≥1可参与，瓜分当月2%营收</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 退款与佣金规则 -->
+    <view class="rule-card">
+      <view class="rule-header" @click="showCommissionRules = !showCommissionRules">
+        <text class="rule-icon">💡</text>
+        <text class="rule-title">退款与佣金规则</text>
+        <text class="expand-arrow" :class="{ expanded: showCommissionRules }">›</text>
+      </view>
+      <view class="commission-rules" v-if="showCommissionRules">
+        <view class="cr-section">
+          <view class="cr-section-title">退款规则</view>
+          <view class="cr-row">
+            <text class="cr-tag tag-green">付款后7天内</text>
+            <text class="cr-text">无条件退款</text>
+          </view>
+          <view class="cr-row">
+            <text class="cr-tag tag-yellow">付款后7-30天</text>
+            <text class="cr-text">协商退款</text>
+          </view>
+          <view class="cr-row">
+            <text class="cr-tag tag-red">超过30天</text>
+            <text class="cr-text">不可退款</text>
+          </view>
+        </view>
+        <view class="cr-section">
+          <view class="cr-section-title">佣金冻结机制</view>
+          <view class="cr-row">
+            <text class="cr-tag tag-blue">付款后</text>
+            <text class="cr-text">佣金冻结,暂不发放</text>
+          </view>
+          <view class="cr-row">
+            <text class="cr-tag tag-blue">完成出行 / 超过30天</text>
+            <text class="cr-text">佣金解除冻结,可提现</text>
+          </view>
+        </view>
+        <view class="cr-section">
+          <view class="cr-section-title">退款时佣金处理</view>
+          <view class="cr-row">
+            <text class="cr-tag tag-green">佣金未解冻</text>
+            <text class="cr-text">自动作废,不扣款</text>
+          </view>
+          <view class="cr-row">
+            <text class="cr-tag tag-red">佣金已发放</text>
+            <text class="cr-text">从账户余额追回,余额不足冻结提现</text>
+          </view>
         </view>
       </view>
     </view>
@@ -171,7 +218,7 @@
 
           <!-- 微信登录 -->
           <view v-if="loginTab === 'wechat'">
-            <view class="login-desc">登录后即可享受分销权益，查看收益明细</view>
+            <view class="login-desc">登录后即可享受分销权益,查看收益明细</view>
             <button class="wx-login-btn" :loading="logging" @click="confirmLogin">
               <text class="wx-icon">📱</text>
               <text>{{ logging ? '登录中...' : '微信一键登录' }}</text>
@@ -229,13 +276,13 @@
             <text class="price-symbol">¥</text>
             <text class="price-num">799</text>
           </view>
-          <view class="open-price-desc">购买云南6天5晚旅游套餐，即可成为分销商</view>
-          
+          <view class="open-price-desc">购买云南6天5晚旅游套餐,即可成为分销商</view>
+
           <!-- 测试环境提示 -->
           <view class="test-tip" v-if="isDev">
-            <text>🛠️ 开发环境：支付测试模式</text>
+            <text>🛠️ 开发环境:支付测试模式</text>
           </view>
-          
+
           <view class="payment-methods">
             <view class="payment-title">支付方式</view>
             <view class="payment-item selected">
@@ -244,12 +291,12 @@
               <text class="payment-check">✓</text>
             </view>
           </view>
-          
+
           <button class="pay-btn" :loading="paying" @click="confirmPay">
             {{ paying ? '支付中...' : '确认支付 ¥799' }}
           </button>
-          
-          <view class="pay-tip">支付成功后立即开通分销商身份，可查看专属推广码</view>
+
+          <view class="pay-tip">支付成功后立即开通分销商身份,可查看专属推广码</view>
         </view>
       </view>
     </view>
@@ -268,7 +315,7 @@ const userStore = useUserStore()
 // 分享给好友
 onShareAppMessage(() => {
   return {
-    title: '云南6天5晚跟团游，只要799！一起旅行一起赚！',
+    title: '云南6天5晚跟团游,只要799!一起旅行一起赚!',
     path: `/pages/user/user?referrerId=${userStore.state.userId}`,
     imageUrl: '/static/banner.jpg'
   }
@@ -277,13 +324,14 @@ onShareAppMessage(() => {
 // 分享到朋友圈
 onShareTimeline(() => {
   return {
-    title: '云南旅行799元6天5晚，一起旅行一起赚！',
+    title: '云南旅行799元6天5晚,一起旅行一起赚!',
     query: `referrerId=${userStore.state.userId}`,
     imageUrl: '/static/banner.jpg'
   }
 })
 const showLoginModal = ref(false)
 const showOpenModal = ref(false)
+const showCommissionRules = ref(false)
 const logging = ref(false)
 const paying = ref(false)
 const userInfo = ref({})
@@ -339,7 +387,7 @@ async function loadUserData() {
       const earningsRes = await getUserEarnings({ userId: userStore.state.userId })
       if (earningsRes.code === 200 && earningsRes.data) {
         const d = earningsRes.data
-        // 字段名对齐：后端字段名 -> 前端显示名
+        // 字段名对齐:后端字段名 -> 前端显示名
         earnings.value = {
           totalCommission: d.totalEarnings || 0,
           availableCommission: d.availableBalance || 0,
@@ -386,7 +434,7 @@ async function confirmLogin() {
     userInfo.value = user
     await loadUserData()
 
-    // 检查是否已绑定手机，未绑定则提示绑定
+    // 检查是否已绑定手机,未绑定则提示绑定
     if (!user.phone) {
       isPhoneBinding.value = true
       loginTab.value = 'phone'
@@ -428,7 +476,7 @@ async function handleSendSmsCode() {
       uni.showToast({ title: res.message || '发送失败', icon: 'none' })
     }
   } catch (e) {
-    uni.showToast({ title: '发送失败，请重试', icon: 'none' })
+    uni.showToast({ title: '发送失败,请重试', icon: 'none' })
   }
 }
 
@@ -505,7 +553,7 @@ async function confirmPhoneLogin() {
 function doLogout() {
   uni.showModal({
     title: '确认退出',
-    content: '确定要退出登录吗？',
+    content: '确定要退出登录吗?',
     success: (res) => {
       if (res.confirm) {
         userStore.logout()
@@ -530,18 +578,18 @@ function openDistributor() {
 async function confirmPay() {
   if (paying.value) return
   paying.value = true
-  
+
   try {
-    // 开发环境：直接开通（跳过真实支付）
+    // 开发环境:直接开通(跳过真实支付)
     // #ifndef MP-WEIXIN
     await becomeDistributor({ userId: userStore.state.userId })
     userInfo.value.isDistributor = true
     userStore.setDistributor(true)
     showOpenModal.value = false
-    uni.showToast({ title: '开通成功！你是分销商了', icon: 'success' })
+    uni.showToast({ title: '开通成功!你是分销商了', icon: 'success' })
     // #endif
-    
-    // 真实微信支付流程（上线时启用）
+
+    // 真实微信支付流程(上线时启用)
     // #ifdef MP-WEIXIN
     // TODO: 调用微信支付
     uni.showToast({ title: '支付功能待集成', icon: 'none' })
@@ -559,7 +607,7 @@ function goToWithdraw() {
     showLoginModal.value = true
     return
   }
-  uni.navigateTo({ url: '/pages/withdraw/withdraw' })
+  uni.navigateTo({ url: '/pages/distribution/withdraw/withdraw' })
 }
 
 function goToCommissionDetail() {
@@ -567,7 +615,7 @@ function goToCommissionDetail() {
     showLoginModal.value = true
     return
   }
-  uni.navigateTo({ url: '/pages/commission/commission' })
+  uni.navigateTo({ url: '/pages/distribution/commission/commission' })
 }
 
 function goToWithdrawRecord() {
@@ -591,8 +639,13 @@ const contactButler = () => {
   uni.setClipboardData({ data: chosen, success: () => uni.showToast({ title: `微信号 ${chosen} 已复制`, icon: 'success' }) })
 }
 const openGzhModal = () => {
-  // 跳转到公众号文章页，文章顶部有关注入口
-  const articleUrl = 'https://mp.weixin.qq.com/s/D5K_C4bHV97mVvy7MjQ2ZA'
+  // 跳转到公众号文章页,文章顶部有关注入口
+  const articleUrl = (homeConfig.value.officialAccountUrl || '').trim()
+    || 'https://mp.weixin.qq.com/s/D5K_C4bHV97mVvy7MjQ2ZA'
+  if (!articleUrl) {
+    uni.showToast({ title: '暂未配置公众号链接', icon: 'none' })
+    return
+  }
   uni.navigateTo({ url: '/pages/webview/webview?url=' + encodeURIComponent(articleUrl) })
 }
 
@@ -612,13 +665,13 @@ const handleMenu = (action) => {
     showLoginModal.value = true
     return
   }
-  
+
   if (action === 'import') {
-    uni.navigateTo({ url: '/pages/import/import' })
+    uni.navigateTo({ url: '/pages/distribution/import/import' })
     return
   }
   if (action === 'orders') {
-    uni.navigateTo({ url: '/pages/order/order' })
+    uni.navigateTo({ url: '/pages/distribution/order/order' })
     return
   }
   if (action === 'team') {
@@ -630,7 +683,7 @@ const handleMenu = (action) => {
     return
   }
   if (action === 'commission') {
-    uni.navigateTo({ url: '/pages/commission/commission' })
+    uni.navigateTo({ url: '/pages/distribution/commission/commission' })
     return
   }
   if (action === 'invite') {
@@ -642,7 +695,7 @@ const handleMenu = (action) => {
     return
   }
   if (action === 'settings') {
-    uni.navigateTo({ url: '/pages/settings/settings' })
+    uni.navigateTo({ url: '/pages/distribution/settings/settings' })
     return
   }
 }
@@ -683,7 +736,6 @@ const handleMenu = (action) => {
 }
 .earnings-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
 .earnings-label { font-size: 26rpx; color: #666; }
-.earnings-withdraw { font-size: 24rpx; color: #667eea; }
 .earnings-amount { text-align: center; margin: 20rpx 0; }
 .amount-num { font-size: 64rpx; font-weight: 800; color: #333; }
 .earnings-btns { display: flex; justify-content: center; gap: 30rpx; }
@@ -732,6 +784,21 @@ const handleMenu = (action) => {
 .level-2 { background: #e8f4ff; color: #667eea; }
 .level-3 { background: #e8ffe8; color: #07c160; }
 .rule-desc { font-size: 24rpx; color: #666; }
+/* 展开箭头 */
+.expand-arrow { margin-left: auto; font-size: 28rpx; color: #999; transition: transform 0.3s; display: inline-block; }
+.expand-arrow.expanded { transform: rotate(90deg); }
+/* 佣金规则详情 */
+.commission-rules { margin-top: 20rpx; padding-top: 20rpx; border-top: 1px solid #f0f0f0; }
+.cr-section { margin-bottom: 20rpx; }
+.cr-section:last-child { margin-bottom: 0; }
+.cr-section-title { font-size: 26rpx; font-weight: bold; color: #333; margin-bottom: 12rpx; }
+.cr-row { display: flex; align-items: center; gap: 12rpx; margin-bottom: 10rpx; flex-wrap: wrap; }
+.cr-tag { font-size: 22rpx; padding: 4rpx 12rpx; border-radius: 6rpx; white-space: nowrap; }
+.cr-tag.tag-green { background: #e8ffe8; color: #07c160; }
+.cr-tag.tag-yellow { background: #fff8e1; color: #f5a623; }
+.cr-tag.tag-red { background: #ffe8e8; color: #ff6b6b; }
+.cr-tag.tag-blue { background: #e8f4ff; color: #1899ff; }
+.cr-text { font-size: 24rpx; color: #666; }
 
 /* 菜单 */
 .menu-section { background: #fff; margin: 0 30rpx; border-radius: 20rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); padding: 10rpx 0; margin-bottom: 40rpx; }

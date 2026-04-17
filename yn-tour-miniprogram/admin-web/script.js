@@ -1,4 +1,5 @@
-const API_BASE = 'http://localhost:3000/api';
+// 改为相对路径，自动适配当前 host（开发/生产均可用）
+const API_BASE = '/api';
 
 // 当前状态
 let currentPage = 'dashboard';
@@ -126,7 +127,8 @@ function switchPage(page) {
     products: '产品管理',
     itinerary: '行程管理',
     review: '评价管理',
-    'home-decorate': '首页装修'
+    'home-decorate': '首页装修',
+    'announcement': '弹窗公告'
   };
   document.getElementById('page-title').textContent = titles[page] || page;
   
@@ -147,7 +149,9 @@ function switchPage(page) {
   if (page === 'itinerary') loadItineraryList();
   if (page === 'review') loadReviewList();
   if (page === 'home-decorate') loadHomeDecorate();
+  if (page === 'background') loadBackgroundList();
   if (page === 'refund') loadRefundList();
+  if (page === 'announcement') loadAnnouncementList();
 }
 
 // 加载数据看板
@@ -158,12 +162,12 @@ async function loadDashboard() {
     
     if (result.code === 200) {
       const data = result.data;
-      document.getElementById('total-orders').textContent = data.totalOrders || 0;
-      document.getElementById('total-users').textContent = data.totalUsers || 0;
-      document.getElementById('total-revenue').textContent = formatMoney(data.totalRevenue);
-      document.getElementById('total-withdraw').textContent = formatMoney(data.totalWithdraw);
-      document.getElementById('pending-withdraw-count').textContent = data.pendingWithdrawCount || 0;
-      document.getElementById('pending-order-count').textContent = data.pendingOrderCount || 0;
+      document.getElementById('total-orders').textContent = data.orderStats?.totalOrders || 0;
+      document.getElementById('total-users').textContent = data.userStats?.totalUsers || 0;
+      document.getElementById('total-revenue').textContent = formatMoney(data.revenueStats?.totalRevenue);
+      document.getElementById('total-withdraw').textContent = formatMoney(data.withdrawStats?.totalWithdrawAmount || 0);
+      document.getElementById('pending-withdraw-count').textContent = data.withdrawStats?.pendingWithdraws || 0;
+      document.getElementById('pending-order-count').textContent = data.orderStats?.newOrdersToday || 0;
     }
   } catch (err) {
     console.error('加载看板数据失败:', err);
@@ -219,15 +223,25 @@ function renderUsersTable(users) {
       <td>${formatMoney(user.totalCommission)}</td>
       <td>${formatDateTime(user.createdAt)}</td>
       <td>
+        ${user.status === 0
+          ? '<span class="status-badge" style="background:#ffe8e8;color:#ff6b6b;">已冻结</span>'
+          : '<span class="status-badge status-paid">正常</span>'
+        }
+      </td>
+      <td>
         <div class="table-actions">
           <button class="btn btn-sm btn-secondary" onclick="viewUserDetail('${user._id}')">详情</button>
+          ${user.status === 0
+            ? `<button class="btn btn-sm btn-secondary" onclick="freezeUser('${user._id}', false)">解冻</button>`
+            : `<button class="btn btn-sm" style="background:#ff6b6b;color:#fff;" onclick="freezeUser('${user._id}', true)">冻结</button>`
+          }
         </div>
       </td>
     </tr>
   `).join('');
 }
 
-// 模拟用户数据
+// 【开发环境fallback】模拟用户数据（仅在API调用失败时降级使用，生产环境不应依赖此处数据）
 function renderMockUsers() {
   const mockUsers = [
     { _id: 'user001', nickname: '张三', isDistributor: true, selfOrderNum: 3, totalCommission: 1599, createdAt: '2026-03-01' },
@@ -366,6 +380,27 @@ function closeUserDetailModal() {
   document.getElementById('user-detail-modal').classList.remove('active');
 }
 
+// 冻结/解冻用户
+async function freezeUser(userId, freeze) {
+  if (!confirm(freeze ? '确定要冻结该用户吗？冻结后用户将无法使用小程序。' : '确定要解冻该用户吗？')) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/user/freeze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, freeze })
+    });
+    const result = await res.json();
+    if (result.code === 200) {
+      alert(result.message);
+      loadUsers();
+    } else {
+      alert('操作失败: ' + result.message);
+    }
+  } catch (err) {
+    alert('操作失败: ' + err.message);
+  }
+}
+
 // 加载订单列表
 async function loadOrders() {
   try {
@@ -423,7 +458,7 @@ function renderOrdersTable(orders) {
   }).join('');
 }
 
-// 模拟订单数据
+// 【开发环境fallback】模拟订单数据（仅在API调用失败时降级使用，生产环境不应依赖此处数据）
 function renderMockOrders() {
   const mockOrders = [
     { _id: 'order001', orderNo: 'TY202603270001', productName: '云南6天5晚·轻奢游', totalAmount: 799, status: 'paid', travelDate: '2026-04-01', createdAt: '2026-03-27 10:30:00' },
@@ -857,7 +892,7 @@ function renderWithdrawsTable(withdraws) {
   }).join('');
 }
 
-// 模拟提现数据
+// 【开发环境fallback】模拟提现数据（仅在API调用失败时降级使用，生产环境不应依赖此处数据）
 function renderMockWithdraws() {
   const mockWithdraws = [
     { _id: 'wd001', userId: { nickname: '张三' }, withdrawMethod: 'wechat', amount: 500, fee: 5, actualAmount: 495, status: 'pending', createdAt: '2026-03-27 10:30:00' },
@@ -1948,6 +1983,7 @@ async function loadHomeDecorate() {
       document.getElementById('decorate-product-select').value = result.data.linkedProductId || '';
       document.getElementById('decorate-butler-phones').value = result.data.butlerPhones || '';
       document.getElementById('decorate-butler-wechats').value = result.data.butlerWechats || '';
+      document.getElementById('decorate-official-account-url').value = result.data.officialAccountUrl || '';
       updateDecoratePreview(result.data.bannerImage, result.data.linkedProductName);
     } else {
       updateDecoratePreview('', '');
@@ -2009,11 +2045,12 @@ async function saveHomeDecorate() {
   const productName = productId ? document.querySelector(`#decorate-product-select option[value="${productId}"]`).textContent.split('（')[0] : '';
   const butlerPhones = document.getElementById('decorate-butler-phones').value.trim();
   const butlerWechats = document.getElementById('decorate-butler-wechats').value.trim();
+  const officialAccountUrl = document.getElementById('decorate-official-account-url').value.trim();
   try {
     const res = await fetch(`${API_BASE}/homeConfig/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bannerImage, linkedProductId: productId || null, linkedProductName: productName, butlerPhones, butlerWechats })
+      body: JSON.stringify({ bannerImage, linkedProductId: productId || null, linkedProductName: productName, butlerPhones, butlerWechats, officialAccountUrl })
     });
     const result = await res.json();
     if (result.code === 200) {
@@ -2041,6 +2078,104 @@ document.getElementById('decorate-banner-url')?.addEventListener('input', functi
     : '';
   updateDecoratePreview(this.value.trim(), productName);
 });
+
+
+// ========== 海报背景管理 ==========
+async function loadBackgroundList() {
+  try {
+    const res = await fetch('/api/background/list');
+    const json = await res.json();
+    const list = json.data || [];
+    const container = document.getElementById('background-list');
+    if (!list.length) {
+      container.innerHTML = '<div style="text-align:center;color:#999;padding:40px;">暂无背景图，点击上方按钮上传</div>';
+      return;
+    }
+    container.innerHTML = list.map(bg => `
+      <div style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+        <div style="position:relative;padding-top:56.25%;background:#f9fafb;">
+          <img src="${bg.url}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
+          <div style="position:absolute;top:8px;right:8px;display:flex;gap:6px;">
+            <button onclick="toggleBgStatus('${bg._id}', ${bg.status ? 0 : 1})" style="padding:4px 8px;font-size:11px;border-radius:4px;border:none;cursor:pointer;background:${bg.status ? '#10b981' : '#6b7280'};color:#fff;">${bg.status ? '已启用' : '已禁用'}</button>
+            <button onclick="deleteBackground('${bg._id}')" style="padding:4px 8px;font-size:11px;border-radius:4px;border:none;cursor:pointer;background:#ef4444;color:#fff;">删除</button>
+          </div>
+          ${bg.status ? '<div style="position:absolute;top:8px;left:8px;background:#10b981;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;">启用中</div>' : ''}
+        </div>
+        <div style="padding:10px 12px;">
+          <div style="font-size:12px;color:#374151;margin-bottom:6px;">${bg.name || '未命名'}</div>
+          <div style="font-size:11px;color:#9ca3af;margin-bottom:8px;">排序: ${bg.sort || 0}</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="number" id="bg-sort-${bg._id}" value="${bg.sort || 0}" min="0" style="flex:1;padding:4px 6px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;">
+            <button onclick="updateBgSort('${bg._id}')" style="padding:4px 10px;font-size:12px;border-radius:4px;border:none;cursor:pointer;background:#4facfe;color:#fff;">保存</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    document.getElementById('background-list').innerHTML = '<div style="text-align:center;color:#ef4444;padding:40px;">加载失败</div>';
+  }
+}
+
+function handleBgUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { alert('图片不超过5MB'); return; }
+  const formData = new FormData();
+  formData.append('image', file);
+  fetch('/api/background/upload', { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(data => {
+      if (data.code === 200) {
+        alert('上传成功');
+        loadBackgroundList();
+      } else {
+        alert('上传失败: ' + (data.message || '未知错误'));
+      }
+    })
+    .catch(() => alert('上传失败'));
+  event.target.value = '';
+}
+
+async function toggleBgStatus(id, status) {
+  try {
+    const res = await fetch('/api/background/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status })
+    });
+    const json = await res.json();
+    if (json.code === 200) loadBackgroundList();
+    else alert('操作失败');
+  } catch { alert('操作失败'); }
+}
+
+async function updateBgSort(id) {
+  const sort = document.getElementById('bg-sort-' + id).value;
+  try {
+    const res = await fetch('/api/background/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, sort: parseInt(sort) || 0 })
+    });
+    const json = await res.json();
+    if (json.code === 200) loadBackgroundList();
+    else alert('保存失败');
+  } catch { alert('保存失败'); }
+}
+
+async function deleteBackground(id) {
+  if (!confirm('确定删除这张背景图？')) return;
+  try {
+    const res = await fetch('/api/background/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    const json = await res.json();
+    if (json.code === 200) loadBackgroundList();
+    else alert('删除失败');
+  } catch { alert('删除失败'); }
+}
 
 
 // ========== 行程管理 ==========
@@ -2401,9 +2536,10 @@ async function loadRefundList() {
       // 分页
       const total = result.data?.pagination?.total || 0;
       const pages = Math.ceil(total / 20);
-      const pagination = document.getElementById('refund-pagination');
-      if (pagination) {
-        pagination.innerHTML = generatePagination(refundPage, pages, (p) => { refundPage = p; loadRefundList(); });
+      const paginationEl = document.getElementById('refund-pagination');
+      if (paginationEl) {
+        paginationEl.innerHTML = '';
+        renderPagination('refund-pagination', { page: refundPage, pages, total }, (p) => { refundPage = p; loadRefundList(); });
       }
     } else {
       tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#e74c3c;padding:40px;">加载失败</td></tr>';
@@ -2454,6 +2590,195 @@ async function handleRefundReject(orderId) {
   } catch (err) {
     alert('操作失败：' + err.message);
   }
+}
+
+// ============================================
+// 弹窗公告管理
+// ============================================
+
+let announcementPage = 1;
+let announcementKeyword = '';
+
+async function loadAnnouncementList(page = 1) {
+  announcementPage = page;
+  const keyword = document.getElementById('announcement-search')?.value || '';
+  announcementKeyword = keyword;
+  const tbody = document.getElementById('announcement-list-body');
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:40px;">加载中...</td></tr>';
+
+  try {
+    const params = new URLSearchParams({ page, pageSize: 10 });
+    if (keyword) params.append('keyword', keyword);
+    const res = await fetch(`${API_BASE}/admin/announcement/list?${params}`);
+    const result = await res.json();
+    if (result.code === 200) {
+      renderAnnouncementTable(result.data?.list || []);
+      renderAnnouncementPagination(result.data?.total || 0, page);
+    } else {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:40px;">加载失败</td></tr>';
+    }
+  } catch (err) {
+    console.error('加载公告列表失败:', err);
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:40px;">加载失败</td></tr>';
+  }
+}
+
+function renderAnnouncementTable(list) {
+  const tbody = document.getElementById('announcement-list-body');
+  if (!tbody) return;
+  if (!list || list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:40px;">暂无数据</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(item => `
+    <tr>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(item.title || '(无标题)')}</td>
+      <td>${item.type === 'popup' ? '弹窗' : 'Banner'}</td>
+      <td><span style="color:${item.status === 1 ? '#52c41a' : '#999'};font-weight:600;">${item.status === 1 ? '启用' : '禁用'}</span></td>
+      <td>${item.showStart || item.showEnd ? (formatDateTime(item.showStart) + ' ~ ' + formatDateTime(item.showEnd)) : '永久'}</td>
+      <td>${formatDateTime(item.createdAt)}</td>
+      <td>
+        <button class="btn btn-sm" onclick="editAnnouncement('${item._id}')">编辑</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteAnnouncement('${item._id}')">删除</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderAnnouncementPagination(total, page) {
+  const container = document.getElementById('announcement-pagination');
+  if (!container) return;
+  const totalPages = Math.ceil(total / 10);
+  if (totalPages <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+  let html = '';
+  if (page > 1) html += `<button class="btn btn-sm" onclick="loadAnnouncementList(${page - 1})">上一页</button>`;
+  html += `<span style="padding:0 12px;">第 ${page} / ${totalPages} 页，共 ${total} 条</span>`;
+  if (page < totalPages) html += `<button class="btn btn-sm" onclick="loadAnnouncementList(${page + 1})">下一页</button>`;
+  container.innerHTML = html;
+}
+
+function showAnnouncementModal(id) {
+  const modal = document.getElementById('announcement-modal');
+  if (!modal) return;
+  document.getElementById('announcement-id').value = id || '';
+  document.getElementById('announcement-modal-title').textContent = id ? '编辑公告' : '新建公告';
+  document.getElementById('announcement-title').value = '';
+  document.getElementById('announcement-content').value = '';
+  document.getElementById('announcement-type').value = 'popup';
+  document.getElementById('announcement-status').value = '1';
+  document.getElementById('announcement-show-start').value = '';
+  document.getElementById('announcement-show-end').value = '';
+  document.getElementById('announcement-bg-color').value = '#ffffff';
+  document.getElementById('announcement-text-color').value = '#333333';
+  document.getElementById('announcement-priority').value = '0';
+  modal.classList.add('active');
+}
+
+function closeAnnouncementModal() {
+  const modal = document.getElementById('announcement-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+async function editAnnouncement(id) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/announcement/list?page=1&pageSize=100`);
+    const result = await res.json();
+    if (result.code === 200) {
+      const item = (result.data?.list || []).find(a => a._id === id);
+      if (!item) { alert('公告不存在'); return; }
+      document.getElementById('announcement-id').value = item._id;
+      document.getElementById('announcement-modal-title').textContent = '编辑公告';
+      document.getElementById('announcement-title').value = item.title || '';
+      document.getElementById('announcement-content').value = item.content || '';
+      document.getElementById('announcement-type').value = item.type || 'popup';
+      document.getElementById('announcement-status').value = String(item.status);
+      document.getElementById('announcement-bg-color').value = item.bgColor || '#ffffff';
+      document.getElementById('announcement-text-color').value = item.textColor || '#333333';
+      document.getElementById('announcement-priority').value = item.priority || 0;
+      if (item.showStart) {
+        document.getElementById('announcement-show-start').value = toDatetimeLocal(new Date(item.showStart));
+      }
+      if (item.showEnd) {
+        document.getElementById('announcement-show-end').value = toDatetimeLocal(new Date(item.showEnd));
+      }
+      document.getElementById('announcement-modal').classList.add('active');
+    }
+  } catch (err) {
+    alert('加载失败');
+  }
+}
+
+async function saveAnnouncement() {
+  const payload = {
+    title: document.getElementById('announcement-title').value.trim(),
+    content: document.getElementById('announcement-content').value.trim(),
+    type: document.getElementById('announcement-type').value,
+    status: parseInt(document.getElementById('announcement-status').value),
+    bgColor: document.getElementById('announcement-bg-color').value,
+    textColor: document.getElementById('announcement-text-color').value,
+    priority: parseInt(document.getElementById('announcement-priority').value) || 0
+  };
+  const showStart = document.getElementById('announcement-show-start').value;
+  const showEnd = document.getElementById('announcement-show-end').value;
+  if (showStart) payload.showStart = new Date(showStart).toISOString();
+  if (showEnd) payload.showEnd = new Date(showEnd).toISOString();
+
+  const id = document.getElementById('announcement-id').value;
+  const url = id ? `${API_BASE}/admin/announcement/update` : `${API_BASE}/admin/announcement/create`;
+  const body = id ? { ...payload, id } : payload;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const result = await res.json();
+    alert(result.message || (result.code === 200 ? '保存成功' : '保存失败'));
+    if (result.code === 200) {
+      closeAnnouncementModal();
+      loadAnnouncementList(announcementPage);
+    }
+  } catch (err) {
+    alert('保存失败：' + err.message);
+  }
+}
+
+async function deleteAnnouncement(id) {
+  if (!confirm('确定删除该公告？')) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/announcement/${id}`, { method: 'DELETE' });
+    const result = await res.json();
+    alert(result.message || (result.code === 200 ? '删除成功' : '删除失败'));
+    if (result.code === 200) loadAnnouncementList(announcementPage);
+  } catch (err) {
+    alert('删除失败：' + err.message);
+  }
+}
+
+function debounceSearchAnnouncement() {
+  clearTimeout(window._annSearchTimer);
+  window._annSearchTimer = setTimeout(() => loadAnnouncementList(1), 400);
+}
+
+function toDatetimeLocal(date) {
+  if (!date) return '';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${d}T${hh}:${mm}`;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 if (localStorage.getItem('adminLoggedIn') === 'true') {

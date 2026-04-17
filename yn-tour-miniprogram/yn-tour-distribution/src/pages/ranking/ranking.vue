@@ -35,7 +35,7 @@
       <text class="col-rank">排名</text>
       <text class="col-user">用户</text>
       <text class="col-stats">自购/直推/团队/成团</text>
-      <text class="col-earnings">提现金额</text>
+      <text class="col-earnings">可提现</text>
     </view>
 
     <!-- 排行榜列表 -->
@@ -102,7 +102,7 @@ onLoad((options) => {
 async function loadRanking() {
   loading.value = true
   try {
-    const res = await getTeamRanking({ limit: 50 })
+    const res = await getTeamRanking({ limit: 50, period: timeType.value })
     if (res.code === 200 && res.data) {
       rankingList.value = res.data.map((item, index) => ({
         id: item._id || index,
@@ -112,7 +112,8 @@ async function loadRanking() {
         direct: item.directPushNum || 0,
         team: item.totalTeamOrders || 0,
         group: item.groupNum || 0,
-        earnings: item.totalEarnings || 0
+        // 当月/上月显示periodEarnings，累计显示totalEarnings（预计可提现）
+        earnings: item.periodEarnings || item.totalEarnings || 0
       }))
     }
   } catch (e) {
@@ -123,14 +124,13 @@ async function loadRanking() {
 }
 
 const fullList = computed(() => {
-  // 排行榜API无时间过滤，始终返回全量数据
-  // tabs 仅作展示用
   return rankingList.value
 })
 
 function switchTime(type) {
   timeType.value = type
   scrollTop.value = scrollTop.value === 0 ? 0.1 : 0
+  loadRanking() // 重新加载对应时间段数据
 }
 
 function goBack() {
@@ -144,7 +144,9 @@ function formatName(name) {
 
 function formatMoney(money) {
   if (!money && money !== 0) return '0'
-  return money.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const num = parseFloat(money)
+  if (isNaN(num)) return '0'
+  return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 </script>
 

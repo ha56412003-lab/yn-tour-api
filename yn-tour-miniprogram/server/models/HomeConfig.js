@@ -12,6 +12,8 @@ const homeConfigSchema = new mongoose.Schema({
   butlerPhones: { type: String, default: '' },
   // 专属管家微信（多个逗号分隔）
   butlerWechats: { type: String, default: '' },
+  // 公众号文章链接（关联"关注公众号"跳转）
+  officialAccountUrl: { type: String, default: '' },
   // 排序
   sort: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },

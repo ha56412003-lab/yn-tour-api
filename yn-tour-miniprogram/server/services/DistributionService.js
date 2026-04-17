@@ -56,7 +56,9 @@ class DistributionService {
       commissionStatus: 'frozen',
       'distribution.referrerId': referrer._id,
       'distribution.directProfit': result.directProfit,
+      'distribution.indirectProfit': result.indirectProfit || 0,
       'distribution.groupBonus': result.groupBonus || 0,
+      'distribution.groupDividend': result.groupDividend || 0,
       'distribution.referrerOrderIndex': result.orderIndex
     })
 
@@ -69,13 +71,13 @@ class DistributionService {
   static async calculate279Profit(referrer, order, product, buyer) {
     const orderAmount = order.totalAmount
     
-    // 计算总直推单量
-    const totalDirectPushNum = referrer.directPushNum + referrer.lockedUserOrderNum + 1
-    const orderIndex = totalDirectPushNum // 当前订单是推荐人的第几单
+    // 计算总直推单量（279规则：只按directPushNum计算，不含锁客单）
+    const totalDirectPushNum = (referrer.directPushNum || 0) + 1 // +1为推荐人自己的购买单
+    const orderIndex = totalDirectPushNum
 
-    // 279规则：第1单30%，第2单70%，循环往复
-    const profitPerOrder1 = orderAmount * 0.3 // 30%
-    const profitPerOrder2 = orderAmount * 0.7 // 70%
+    // 279规则：第1单30%，第2单70%，循环往复（避免浮点数精度问题）
+    const profitPerOrder1 = Number((orderAmount * 0.3).toFixed(2)) // 30%
+    const profitPerOrder2 = Number((orderAmount * 0.7).toFixed(2)) // 70%
     
     let directProfit = 0
     if (orderIndex % 2 === 1) {
@@ -125,35 +127,77 @@ class DistributionService {
       }
     })
 
-    // 检查是否成团，计算成团奖
+    // 计算间推分润（10%给间推者：推荐人的推荐人）
+    let indirectProfit = 0
+    const grandParentId = order.distribution?.grandParentId
+    if (grandParentId) {
+      const grandParent = await User.findById(grandParentId)
+      if (grandParent && grandParent.isDistributor) {
+        indirectProfit = Number((orderAmount * 0.1).toFixed(2)) // 固定10%
+
+        // 创建间推分润记录（冻结状态）
+        await Commission.create({
+          userId: grandParentId,
+          orderId: order._id,
+          type: 'indirect',
+          amount: indirectProfit,
+          orderAmount: orderAmount,
+          relatedUserId: buyer._id,
+          level: 2,
+          status: 'frozen',
+          frozenAt: new Date(),
+          description: `间推分润 - ${order.orderNo} - 固定10%（退款保护期冻结）`
+        })
+
+        // 更新间推者收益
+        await User.findByIdAndUpdate(grandParentId, {
+          $inc: {
+            totalEarnings: indirectProfit,
+            frozenBalance: indirectProfit
+          }
+        })
+      }
+    }
+
+    // 检查是否成团，计算成团奖和成团专项分红
     let groupBonus = 0
-    const groupResult = await this.calculateGroupBonus(referrer._id, order)
-    if (groupResult && groupResult.bonus > 0) {
-      groupBonus = groupResult.bonus
+    let groupDividend = 0
+    const groupResult = await this.calculateGroupBonusAndDividend(referrer._id, order)
+    if (groupResult) {
+      groupBonus = groupResult.bonus || 0
+      groupDividend = groupResult.groupDividend || 0
     }
 
     return {
       orderIndex,
       directProfit,
+      indirectProfit,
       groupBonus,
-      totalProfit: directProfit + groupBonus
+      groupDividend,
+      totalProfit: directProfit + indirectProfit + groupBonus + groupDividend
     }
   }
 
   /**
-   * 计算成团奖
-   * 条件：团队满7单（自己购买 + 总直推 ≥ 7）
-   * 奖金：800元/团
+   * 计算成团奖 + 成团专项分红（279规则：7人成团，800元/团 + 该团总交易额×2%）
+   * 成团专项分红：每成1个7人团，额外拿该团总交易额×2%
+   * 仅统计 isValid=true 的订单（退款订单不算点位）
    */
-  static async calculateGroupBonus(userId, triggerOrder) {
+  static async calculateGroupBonusAndDividend(userId, triggerOrder) {
     const user = await User.findById(userId)
     if (!user) {
       return null
     }
 
-    // 计算团队总单量
-    const totalTeamOrder = (user.selfOrderNum || 0) + (user.directPushNum || 0) + (user.lockedUserOrderNum || 0)
-    
+    // 计算团队总单量（按279规则：selfOrderNum + directPushNum，不含lockedUserOrderNum）
+    // 仅统计 isValid=true 的订单
+    const validOrders = await Order.countDocuments({
+      'distribution.referrerId': userId,
+      'distribution.isValid': true,
+      status: 'paid'
+    })
+    const totalTeamOrder = (user.selfOrderNum || 0) + validOrders
+
     // 计算成团数
     const newGroupNum = Math.floor(totalTeamOrder / 7)
     const oldGroupNum = user.groupNum || 0
@@ -162,9 +206,20 @@ class DistributionService {
       return null // 没有新成团
     }
 
-    const bonusPerGroup = 800
     const newGroups = newGroupNum - oldGroupNum
+    const bonusPerGroup = 800
     const totalBonus = newGroups * bonusPerGroup
+
+    // 计算成团专项分红：该团总交易额×2%
+    // 团总交易额 = 7人 × 每人订单金额
+    // 校验触发订单金额有效性
+    if (!triggerOrder.totalAmount || triggerOrder.totalAmount <= 0) {
+      console.error(`[成团分红] 订单 ${triggerOrder.orderNo} 金额异常(${triggerOrder.totalAmount})，跳过`)
+      return null
+    }
+    const groupTotalAmount = triggerOrder.totalAmount * 7
+    const groupDividendPerGroup = groupTotalAmount * 0.02 // ≈111.86元/团
+    const totalGroupDividend = Number((newGroups * groupDividendPerGroup).toFixed(2))
 
     // 更新用户成团数
     await User.findByIdAndUpdate(userId, {
@@ -181,22 +236,38 @@ class DistributionService {
       relatedUserId: triggerOrder.userId,
       status: 'frozen',
       frozenAt: new Date(),
-      description: `成团奖 - 第${newGroupNum}团 - ${newGroups}团 × 800元（退款保护期冻结）`
+      description: `成团奖 - 第${newGroupNum}团 - ${newGroups}团×800元（退款保护期冻结）`
     })
+
+    // 创建成团专项分红记录（冻结状态）
+    if (totalGroupDividend > 0) {
+      await Commission.create({
+        userId: userId,
+        orderId: triggerOrder._id,
+        type: 'bonus',
+        amount: totalGroupDividend,
+        orderAmount: groupTotalAmount,
+        relatedUserId: triggerOrder.userId,
+        status: 'frozen',
+        frozenAt: new Date(),
+        description: `成团专项分红 - 第${newGroupNum}团 - ${newGroups}团×2%≈${groupDividendPerGroup.toFixed(2)}元/团（退款保护期冻结）`
+      })
+    }
 
     // 更新用户收益（佣金进入冻结余额）
     await User.findByIdAndUpdate(userId, {
       $inc: {
-        totalEarnings: totalBonus,
-        frozenBalance: totalBonus
+        totalEarnings: totalBonus + totalGroupDividend,
+        frozenBalance: totalBonus + totalGroupDividend
       }
     })
 
-    console.log(`[成团奖] 用户 ${userId} 获得成团奖 ${totalBonus}元，累计${newGroupNum}团`)
+    console.log(`[成团奖+专项分红] 用户 ${userId} 获得成团奖${totalBonus}元+专项分红${totalGroupDividend}元，累计${newGroupNum}团`)
 
     return {
       groupNum: newGroupNum,
-      bonus: totalBonus
+      bonus: totalBonus,
+      groupDividend: totalGroupDividend
     }
   }
 
@@ -226,10 +297,10 @@ class DistributionService {
       return { success: false, message: '无分红资金池或合格订单' }
     }
 
-    // 获取符合分红条件的用户
+    // 获取符合分红条件的用户（279规则：直推≥2 或 成团≥1）
     const eligibleUsers = await User.find({
       $or: [
-        { $expr: { $gte: [{ $add: ['$directPushNum', '$lockedUserOrderNum'] }, 2] } },
+        { directPushNum: { $gte: 2 } },
         { groupNum: { $gte: 1 } }
       ],
       isDistributor: true
@@ -238,14 +309,14 @@ class DistributionService {
     // 计算每个用户的分红
     const results = []
     for (const user of eligibleUsers) {
-      const totalTeamOrder = (user.selfOrderNum || 0) + (user.directPushNum || 0) + (user.lockedUserOrderNum || 0)
-      
+      const totalTeamOrder = (user.selfOrderNum || 0) + (user.directPushNum || 0)
+
       if (totalTeamOrder <= 0) continue
 
       const userDividend = dividendPool * (totalTeamOrder / platformQualifiedTotalOrder)
-      
+
+      // 1. 平台业绩分红
       if (userDividend > 0) {
-        // 创建分红记录
         await Commission.create({
           userId: user._id,
           type: 'bonus',
@@ -253,17 +324,55 @@ class DistributionService {
           orderAmount: stats.platformTotalRevenue,
           status: 'settled',
           settledAt: new Date(),
-          description: `${year}年${month}月平台分红`
+          description: `${year}年${month}月平台业绩分红`
         })
-
-        // 更新用户收益
         await User.findByIdAndUpdate(user._id, {
-          $inc: {
-            totalEarnings: userDividend,
-            availableBalance: userDividend
-          }
+          $inc: { totalEarnings: userDividend, availableBalance: userDividend }
         })
+      }
 
+      // 2. 直推管理津贴：直推用户当月所有收益×10%
+      const directPushUsers = await User.find({ parentId: user._id })
+      if (directPushUsers.length > 0) {
+        const directPushUserIds = directPushUsers.map(u => u._id)
+        // 查找直推用户当月的所有佣金收入（直推分润+成团奖+间推分润）
+        const monthStart = new Date(year, month - 1, 1)
+        const monthEnd = new Date(year, month, 0, 23, 59, 59)
+        const commissionAgg = await Commission.aggregate([
+          {
+            $match: {
+              userId: { $in: directPushUserIds },
+              createdAt: { $gte: monthStart, $lte: monthEnd },
+              status: { $in: ['frozen', 'settled'] },
+              type: { $in: ['direct', 'indirect', 'bonus'] }
+            }
+          },
+          { $group: { _id: null, total: { $sum: '$amount' } } }
+        ])
+        const totalDirectPushEarnings = commissionAgg[0]?.total || 0
+        const managementAllowance = Number((totalDirectPushEarnings * 0.1).toFixed(2))
+
+        if (managementAllowance > 0) {
+          await Commission.create({
+            userId: user._id,
+            type: 'bonus',
+            amount: managementAllowance,
+            orderAmount: totalDirectPushEarnings,
+            status: 'settled',
+            settledAt: new Date(),
+            description: `${year}年${month}月直推管理津贴（直推用户收益×10%）`
+          })
+          await User.findByIdAndUpdate(user._id, {
+            $inc: { totalEarnings: managementAllowance, availableBalance: managementAllowance }
+          })
+        }
+
+        results.push({
+          userId: user._id,
+          dividend: userDividend,
+          managementAllowance
+        })
+      } else {
         results.push({
           userId: user._id,
           dividend: userDividend
@@ -355,11 +464,12 @@ class DistributionService {
    * 直推分润（按279规则）：第1/3/5...单30%（239.7元），第2/4/6...单70%（559.3元）
    */
   static calcDirectProfit(directPushNum, orderAmount = 799) {
-    const profitPerOrder1 = orderAmount * 0.3 // 239.7元
-    const profitPerOrder2 = orderAmount * 0.7 // 559.3元
+    // 避免浮点数精度问题，统一用 toFixed(2)
+    const profitPerOrder1 = Number((orderAmount * 0.3).toFixed(2)) // 239.7元
+    const profitPerOrder2 = Number((orderAmount * 0.7).toFixed(2)) // 559.3元
     const cycle = Math.floor(directPushNum / 2) // 完整循环次数（每2单为1个循环）
     const remainder = directPushNum % 2 // 剩余单数（0或1）
-    return (cycle * (profitPerOrder1 + profitPerOrder2)) + (remainder * profitPerOrder1)
+    return Number(((cycle * (profitPerOrder1 + profitPerOrder2)) + (remainder * profitPerOrder1)).toFixed(2))
   }
 
   /**
@@ -605,13 +715,67 @@ class DistributionService {
   /**
    * 获取用户团队排行榜
    */
-  static async getTeamRanking(limit = 10) {
-    const ranking = await User.find({ isDistributor: true })
-      .sort({ totalEarnings: -1 })
-      .limit(limit)
+  /**
+   * 获取团队排行榜（支持时间筛选）
+   * 当月/上月：统计该时间段内的佣金收益（commission记录）
+   * 累计：使用 totalEarnings（已有）
+   */
+  static async getTeamRanking(limit = 10, period = 'all') {
+    const now = new Date()
+    let startDate, endDate
+
+    if (period === 'month') {
+      // 当月
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+    } else if (period === 'lastMonth') {
+      // 上月
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)
+    }
+
+    if (period === 'all') {
+      // 累计：使用 totalEarnings（含保护期冻结佣金，即预计可提现金额）
+      const ranking = await User.find({ isDistributor: true })
+        .sort({ totalEarnings: -1 })
+        .limit(limit)
+        .select('nickname avatar totalEarnings selfOrderNum directPushNum teamCount groupNum totalTeamOrders')
+      return ranking.map((u, i) => ({ ...u.toObject(), rank: i + 1 }))
+    }
+
+    // 当月/上月：聚合该时间段的佣金收益
+    const matchStage = {
+      userId: { $exists: true },
+      status: { $in: ['frozen', 'settled'] },
+      createdAt: { $gte: startDate, $lte: endDate }
+    }
+
+    const rankingData = await Commission.aggregate([
+      { $match: matchStage },
+      { $group: { _id: '$userId', periodEarnings: { $sum: '$amount' } } },
+      { $sort: { periodEarnings: -1 } },
+      { $limit: limit }
+    ])
+
+    // 补充用户信息
+    const userIds = rankingData.map(r => r._id)
+    const users = await User.find({ _id: { $in: userIds } })
       .select('nickname avatar totalEarnings teamCount groupNum totalTeamOrders')
-    
-    return ranking
+
+    const userMap = new Map(users.map(u => [u._id.toString(), u]))
+    return rankingData.map((r, i) => {
+      const user = userMap.get(r._id.toString())
+      return {
+        rank: i + 1,
+        nickname: user?.nickname || '用户',
+        avatar: user?.avatar || '',
+        totalEarnings: user?.totalEarnings || 0,
+        periodEarnings: r.periodEarnings,
+        teamCount: user?.teamCount || 0,
+        groupNum: user?.groupNum || 0,
+        totalTeamOrders: user?.totalTeamOrders || 0
+      }
+    })
   }
 
   /**
@@ -638,6 +802,50 @@ class DistributionService {
   }
 
   /**
+   * 检查并自动解冻用户的过期冻结佣金（30天保护期满）
+   * 在用户申请提现时调用，确保冻结佣金及时解冻
+   */
+  static async checkAndReleaseFrozenCommissions(userId) {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    
+    // 查找所有已过30天保护期的冻结佣金记录
+    const frozenCommissions = await Commission.find({
+      userId,
+      status: 'frozen',
+      frozenAt: { $lte: thirtyDaysAgo }
+    })
+    
+    if (frozenCommissions.length === 0) {
+      return { success: true, message: '无过期冻结佣金', released: 0 }
+    }
+    
+    let releasedCount = 0
+    for (const comm of frozenCommissions) {
+      // 从冻结余额转入可用余额
+      await User.findByIdAndUpdate(comm.userId, {
+        $inc: {
+          frozenBalance: -comm.amount,
+          availableBalance: comm.amount
+        }
+      })
+      
+      // 更新佣金记录状态为已结算
+      await Commission.findByIdAndUpdate(comm._id, {
+        status: 'settled',
+        settledAt: new Date()
+      })
+      
+      // 标记对应订单佣金状态为已释放
+      await Order.findByIdAndUpdate(comm.orderId, { commissionStatus: 'released' })
+      
+      releasedCount++
+    }
+    
+    console.log(`[佣金自动解冻] 用户 ${userId} 共有 ${releasedCount} 笔佣金已解冻`)
+    return { success: true, message: `已解冻${releasedCount}笔佣金`, released: releasedCount }
+  }
+
+  /**
    * 释放冻结佣金（30天退款保护期满后自动调用）
    * 从 frozenBalance 转入 availableBalance
    */
@@ -650,7 +858,11 @@ class DistributionService {
     // 查找该订单对应的所有冻结佣金记录
     const frozenCommissions = await Commission.find({ orderId, status: 'frozen' })
     if (frozenCommissions.length === 0) {
-      // 无冻结佣金，直接标记为released
+      // 无冻结佣金，检查是否已被追回
+      const existingComm = await Commission.findOne({ orderId })
+      if (existingComm && existingComm.status === 'clawed_back') {
+        return { success: false, message: '该订单佣金已全部追回，禁止重复解冻' }
+      }
       await Order.findByIdAndUpdate(orderId, { commissionStatus: 'released' })
       return { success: true, message: '无冻结佣金记录' }
     }
@@ -709,20 +921,38 @@ class DistributionService {
       if (!user) continue
 
       if (comm.status === 'frozen') {
-        // 冻结中：从 frozenBalance 扣回
-        await User.findByIdAndUpdate(comm.userId, {
-          $inc: { frozenBalance: -comm.amount }
-        })
+        // 冻结中：从 frozenBalance 和 totalEarnings 扣回
+        // 校验冻结余额是否充足
+        const frozenBal = user.frozenBalance || 0
+        if (frozenBal < comm.amount) {
+          console.error(`[佣金追回] 用户 ${comm.userId} 冻结余额不足(${frozenBal})，需追回 ${comm.amount}，差额 ${comm.amount - frozenBal}`)
+          // 冻结余额全扣，不足部分记录（实际场景中此情况极少）
+          await User.findByIdAndUpdate(comm.userId, {
+            $inc: { frozenBalance: -frozenBal, totalEarnings: -comm.amount }
+          })
+        } else {
+          await User.findByIdAndUpdate(comm.userId, {
+            $inc: { frozenBalance: -comm.amount, totalEarnings: -comm.amount }
+          })
+        }
       } else if (comm.status === 'settled') {
-        // 已解冻：从 availableBalance 扣回，余额不足则从 frozenBalance 补扣
+        // 已解冻：从 availableBalance 扣回，余额不足则从 frozenBalance 补扣，同时扣 totalEarnings
         const available = user.availableBalance || 0
         let fromAvailable = Math.min(available, comm.amount)
         let fromFrozen = comm.amount - fromAvailable
 
+        // 校验冻结余额是否充足
+        const frozenBal = user.frozenBalance || 0
+        if (fromFrozen > frozenBal) {
+          console.error(`[佣金追回] 用户 ${comm.userId} 冻结余额不足(${frozenBal})，需补扣 ${fromFrozen}，差额 ${fromFrozen - frozenBal}`)
+          fromFrozen = frozenBal
+        }
+
         await User.findByIdAndUpdate(comm.userId, {
           $inc: {
             availableBalance: -fromAvailable,
-            frozenBalance: -fromFrozen
+            frozenBalance: -fromFrozen,
+            totalEarnings: -comm.amount
           }
         })
       }

@@ -78,9 +78,14 @@
           <span class="nav-icon">🏠</span>
           <span>首页装修</span>
         </a>
+        <a href="#" class="nav-item" data-page="background">海报背景</a>
         <a href="#" class="nav-item" data-page="refund">
           <span class="nav-icon">🔄</span>
           <span>售后管理</span>
+        </a>
+        <a href="#" class="nav-item" data-page="announcement">
+          <span class="nav-icon">📢</span>
+          <span>弹窗公告</span>
         </a>
       </nav>
       <div class="sidebar-footer">
@@ -176,6 +181,7 @@
                   <th>自购单</th>
                   <th>总佣金</th>
                   <th>注册时间</th>
+                  <th>状态</th>
                   <th>操作</th>
                 </tr>
               </thead>
@@ -404,6 +410,10 @@
                   <label>管家微信 <span style="font-weight:normal;color:#999;font-size:12px;">（多个逗号分隔）</span></label>
                   <input type="text" id="decorate-butler-wechats" placeholder="如：haha_travel,haha_travel2" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
                 </div>
+                <div class="form-group">
+                  <label>公众号文章链接 <span style="font-weight:normal;color:#999;font-size:12px;">（关联"关注公众号"跳转）</span></label>
+                  <input type="text" id="decorate-official-account-url" placeholder="https://mp.weixin.qq.com/..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
+                </div>
                 <div style="margin-top:16px;">
                   <button class="btn btn-primary" onclick="saveHomeDecorate()">保存配置</button>
                 </div>
@@ -416,6 +426,27 @@
                 </div>
                 <div id="decorate-product-preview" style="margin-top:8px;font-size:12px;color:#888;"></div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 海报背景管理 -->
+      <div id="background-page" class="content-page">
+        <div class="card">
+          <div class="card-header">
+            <h3>🖼️ 海报背景图管理</h3>
+            <div class="card-actions">
+              <button class="btn btn-primary" onclick="document.getElementById('bg-upload-input').click()">+ 上传背景图</button>
+              <input type="file" id="bg-upload-input" accept="image/*" style="display:none;" onchange="handleBgUpload(event)">
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="bg-upload-tip" style="padding:12px 16px;background:#f0f9ff;border-radius:8px;margin-bottom:16px;font-size:13px;color:#0891b2;">
+              支持 JPG/PNG，建议尺寸 750×1334px，文件不超过 5MB。可上传多张，海报生成时随机选取一张。
+            </div>
+            <div id="background-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;">
+              <div style="text-align:center;color:#999;padding:40px;">加载中...</div>
             </div>
           </div>
         </div>
@@ -495,6 +526,40 @@
             </table>
             <div class="pagination" id="import-pagination">
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 弹窗公告页面 -->
+      <div id="announcement-page" class="content-page">
+        <div class="card">
+          <div class="card-header">
+            <h3>弹窗公告管理</h3>
+            <div class="card-actions">
+              <button class="btn btn-primary" onclick="showAnnouncementModal()">新建公告</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="filter-bar" style="margin-bottom:16px;">
+              <input type="text" id="announcement-search" placeholder="搜索标题/内容..." style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;" oninput="debounceSearchAnnouncement()">
+              <button class="btn" style="margin-left:8px;" onclick="loadAnnouncementList()">搜索</button>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>标题</th>
+                  <th>类型</th>
+                  <th>状态</th>
+                  <th>显示时间</th>
+                  <th>创建时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="announcement-list-body">
+                <tr><td colspan="6" style="text-align:center;color:#999;padding:40px;">加载中...</td></tr>
+              </tbody>
+            </table>
+            <div class="pagination" id="announcement-pagination" style="margin-top:16px;"></div>
           </div>
         </div>
       </div>
@@ -988,6 +1053,73 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeShipModal()">取消</button>
         <button class="btn btn-primary" onclick="submitShip()">确认发货</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 公告编辑弹窗 -->
+  <div id="announcement-modal" class="modal">
+    <div class="modal-content" style="max-width:600px;">
+      <div class="modal-header">
+        <h3 id="announcement-modal-title">新建公告</h3>
+        <span class="modal-close" onclick="closeAnnouncementModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="announcement-id">
+        <div class="form-group">
+          <label>公告标题</label>
+          <input type="text" id="announcement-title" placeholder="请输入公告标题" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
+        </div>
+        <div class="form-group">
+          <label>公告内容</label>
+          <textarea id="announcement-content" rows="5" placeholder="请输入公告内容（支持多行）" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;resize:vertical;"></textarea>
+        </div>
+        <div class="form-group" style="display:flex;gap:16px;">
+          <div style="flex:1;">
+            <label>公告类型</label>
+            <select id="announcement-type" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">
+              <option value="popup">弹窗公告</option>
+              <option value="banner">Banner公告</option>
+            </select>
+          </div>
+          <div style="flex:1;">
+            <label>状态</label>
+            <select id="announcement-status" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">
+              <option value="1">启用</option>
+              <option value="0">禁用</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="display:flex;gap:16px;">
+          <div style="flex:1;">
+            <label>开始时间</label>
+            <input type="datetime-local" id="announcement-show-start" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
+          </div>
+          <div style="flex:1;">
+            <label>结束时间</label>
+            <input type="datetime-local" id="announcement-show-end" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
+          </div>
+        </div>
+        <div class="form-group" style="display:flex;gap:16px;">
+          <div style="flex:1;">
+            <label>弹窗背景色</label>
+            <input type="color" id="announcement-bg-color" value="#ffffff" style="width:60px;height:36px;border:1px solid #ddd;border-radius:6px;cursor:pointer;">
+            <span style="margin-left:8px;font-size:12px;color:#999;">选填，默认白色</span>
+          </div>
+          <div style="flex:1;">
+            <label>文字颜色</label>
+            <input type="color" id="announcement-text-color" value="#333333" style="width:60px;height:36px;border:1px solid #ddd;border-radius:6px;cursor:pointer;">
+            <span style="margin-left:8px;font-size:12px;color:#999;">选填，默认深灰色</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>优先级（数字越大越优先）</label>
+          <input type="number" id="announcement-priority" value="0" min="0" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeAnnouncementModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveAnnouncement()">保存</button>
       </div>
     </div>
   </div>

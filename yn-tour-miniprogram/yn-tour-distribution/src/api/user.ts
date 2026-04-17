@@ -144,7 +144,7 @@ export function getCommissionList(params: {
 }
 
 // 获取团队排行榜
-export function getTeamRanking(params: { limit?: number }) {
+export function getTeamRanking(params: { limit?: number; period?: 'month' | 'lastMonth' | 'all' }) {
   return get('/user/team-ranking', params)
 }
 

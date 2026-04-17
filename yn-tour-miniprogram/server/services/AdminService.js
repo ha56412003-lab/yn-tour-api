@@ -205,13 +205,13 @@ class AdminService {
       const start = startDate ? new Date(startDate) : new Date(new Date().setDate(new Date().getDate() - 30))
       const end = endDate ? new Date(endDate) : new Date()
 
-      const orders = await Order.find({
-        status: 'paid',
-        paidAt: {
-          $gte: start,
-          $lte: end
-        }
-      }).sort({ paidAt: 1 })
+      const query = { status: 'paid' }
+      if (startDate) query.createdAt = { $gte: new Date(startDate) }
+      if (endDate) {
+        if (!query.createdAt) query.createdAt = {}
+        query.createdAt.$lte = new Date(endDate + 'T23:59:59')
+      }
+      const orders = await Order.find(query).sort({ paidAt: 1 })
 
       // 按天统计
       const dailyStats = {}
@@ -329,6 +329,20 @@ class AdminService {
       return { success: true, data: stats }
     } catch (error) {
       console.error('[平台统计] 更新失败:', error)
+      return { success: false, message: error.message }
+    }
+  }
+
+  static async freezeUser(userId, freeze) {
+    try {
+      const user = await User.findById(userId)
+      if (!user) {
+        return { success: false, message: '用户不存在' }
+      }
+      user.status = freeze ? 0 : 1
+      await user.save()
+      return { success: true, message: freeze ? '用户已冻结' : '用户已解冻' }
+    } catch (error) {
       return { success: false, message: error.message }
     }
   }

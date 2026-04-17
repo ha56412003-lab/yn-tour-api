@@ -1,9 +1,13 @@
 // 管理后台API
 const express = require('express')
 const router = express.Router()
+const adminAuth = require('../middleware/adminAuth')
 const AdminService = require('../services/AdminService')
 const Order = require('../models/Order')
 const User = require('../models/User')
+
+// 所有管理后台路由需先通过鉴权
+router.use(adminAuth)
 
 // 获取数据看板
 router.get('/dashboard', async (req, res) => {
@@ -261,6 +265,23 @@ router.get('/user-detail', async (req, res) => {
         teamCount: teamMembers.length
       }
     })
+  } catch (err) {
+    res.json({ code: 500, message: err.message })
+  }
+})
+
+// 冻结/解冻用户
+router.post('/user/freeze', async (req, res) => {
+  try {
+    const { userId, freeze } = req.body
+    if (!userId) {
+      return res.json({ code: 400, message: '缺少用户ID' })
+    }
+    const result = await AdminService.freezeUser(userId, freeze)
+    if (!result.success) {
+      return res.json({ code: 400, message: result.message })
+    }
+    res.json({ code: 200, message: result.message })
   } catch (err) {
     res.json({ code: 500, message: err.message })
   }

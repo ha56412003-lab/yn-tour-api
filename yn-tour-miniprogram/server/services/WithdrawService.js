@@ -19,6 +19,9 @@ class WithdrawService {
         return { success: false, message: '只有分销商可以提现' }
       }
 
+      // 先检查并自动解冻过期冻结佣金
+      await DistributionService.checkAndReleaseFrozenCommissions(userId)
+
       // 计算可提现金额
       const withdrawInfo = DistributionService.calcFinalWithdrawAmount(user)
       const maxWithdrawAmount = withdrawInfo.finalAmount
@@ -29,6 +32,11 @@ class WithdrawService {
 
       if (amount > maxWithdrawAmount) {
         return { success: false, message: `提现金额超过可提现额度，最多可提现${maxWithdrawAmount}元` }
+      }
+
+      // 校验真实可用余额，防止超提
+      if (user.availableBalance < amount) {
+        return { success: false, message: `可用余额不足，当前可提现 ¥${user.availableBalance}` }
       }
 
       // 最低提现金额100元

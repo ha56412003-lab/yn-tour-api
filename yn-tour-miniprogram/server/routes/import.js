@@ -1,6 +1,7 @@
 // 导入审核相关API
 const express = require('express')
 const router = express.Router()
+const adminAuth = require('../middleware/adminAuth')
 const ImportVerify = require('../models/ImportVerify')
 const User = require('../models/User')
 
@@ -69,7 +70,7 @@ router.get('/status', async (req, res) => {
 })
 
 // 获取导入审核列表（管理端）
-router.get('/list', async (req, res) => {
+router.get('/list', adminAuth, async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query
     
@@ -103,7 +104,7 @@ router.get('/list', async (req, res) => {
 })
 
 // 审核通过
-router.post('/approve', async (req, res) => {
+router.post('/approve', adminAuth, async (req, res) => {
   try {
     const { id, reviewRemark } = req.body
     
@@ -157,7 +158,7 @@ router.post('/approve', async (req, res) => {
 })
 
 // 审核拒绝
-router.post('/reject', async (req, res) => {
+router.post('/reject', adminAuth, async (req, res) => {
   try {
     const { id, reviewRemark } = req.body
     

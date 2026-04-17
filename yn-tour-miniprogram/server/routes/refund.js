@@ -1,7 +1,9 @@
 const express = require('express')
 const router = express.Router()
+const adminAuth = require('../middleware/adminAuth')
 const Order = require('../models/Order')
 const DistributionService = require('../services/DistributionService')
+const User = require('../models/User')
 
 // ============================================
 // 用户侧：申请退款
@@ -32,7 +34,7 @@ router.post('/apply', async (req, res) => {
     }
 
     // 检查退款状态
-    if (order.refundStatus !== 'none') {
+    if (order.refundStatus !== 'none' && order.refundStatus !== 'rejected') {
       return res.json({ success: false, message: '该订单已有退款申请' })
     }
 
@@ -97,10 +99,11 @@ router.get('/my-list', async (req, res) => {
 })
 
 // ============================================
+// ============================================
 // 管理侧：退款申请列表
 // ============================================
 // GET /api/refund/admin-list
-router.get('/admin-list', async (req, res) => {
+router.get('/admin-list', adminAuth, async (req, res) => {
   try {
     const { page = 1, limit = 20, status } = req.query
 
@@ -131,10 +134,10 @@ router.get('/admin-list', async (req, res) => {
 })
 
 // ============================================
-// 管理侧：审核通过退款
+// 管理侧：审核通过退款（需鉴权）
 // ============================================
 // POST /api/refund/approve
-router.post('/approve', async (req, res) => {
+router.post('/approve', adminAuth, async (req, res) => {
   try {
     const { orderId, remark } = req.body
     const adminId = req.headers['x-user-id']
@@ -166,18 +169,52 @@ router.post('/approve', async (req, res) => {
     // 7天内：无条件退款（前端已做限制，但后端二次校验）
     // 7-30天：需备注原因才可拒绝，前端已申请说明为协商（审核时管理员可自行判断）
 
-    // 1. 追回佣金（如果佣金已发放或冻结）\n    await DistributionService.clawbackCommission(orderId)
+    // 1. 追回佣金（如果佣金已发放或冻结）
+    await DistributionService.clawbackCommission(orderId)
 
-    // 2. 更新订单退款状态\n    order.refundStatus = 'approved'
-    order.refundProcessedAt = new Date()
-    order.refundAdminId = adminId
-    order.refundRemark = remark || ''
-    order.status = 'cancelled'
-    order.commissionStatus = 'clawed_back'
-    await order.save()
+    // 2. 扣减推荐人的有效直推单量（退款订单不计入7人团点位）
+    const referrerId = order.distribution?.referrerId
+    if (referrerId) {
+      const updateFields = {}
+      if (order.distribution?.isLockedOrder) {
+        updateFields.lockedUserOrderNum = -1
+      } else {
+        updateFields.directPushNum = -1
+      }
+      await User.findByIdAndUpdate(referrerId, { $inc: updateFields })
+      console.log(`[退款审核] 扣减推荐人 ${referrerId} 直推单量 (locked=${order.distribution?.isLockedOrder})`)
 
-    // 3. TODO: 实际退款（微信支付退款API），目前仅标记状态\n
-    // 如果是赠送产品（实物卡），需处理物流退回\n
+      // 重新计算并修正 referrer 的 groupNum（防止退款导致成团数下降但 groupNum 未更新）
+      const referrerAfter = await User.findById(referrerId)
+      if (referrerAfter) {
+        const currentValidOrders = await Order.countDocuments({
+          'distribution.referrerId': referrerId,
+          'distribution.isValid': true,
+          status: 'paid'
+        })
+        const newGroupNum = Math.floor((currentValidOrders + (referrerAfter.selfOrderNum || 0)) / 7)
+        if (newGroupNum < (referrerAfter.groupNum || 0)) {
+          await User.findByIdAndUpdate(referrerId, { groupNum: newGroupNum })
+          console.log(`[退款审核] 推荐人 ${referrerId} groupNum 从 ${referrerAfter.groupNum} 纠正为 ${newGroupNum}，多发的成团奖已通过佣金追回流程处理`)
+        }
+      }
+    }
+
+    // 3. 更新订单退款状态（标记为无效，不计入7人团点位）
+    await Order.findByIdAndUpdate(orderId, {
+      $set: {
+        'distribution.isValid': false,
+        refundStatus: 'approved',
+        refundProcessedAt: new Date(),
+        refundAdminId: adminId,
+        refundRemark: remark || '',
+        status: 'cancelled',
+        commissionStatus: 'clawed_back'
+      }
+    })
+
+    // 4. TODO: 实际退款（微信支付退款API），目前仅标记状态
+    // 如果是赠送产品（实物卡），需处理物流退回
 
     res.json({ success: true, message: '退款已审核通过，佣金已追回' })
   } catch (error) {
@@ -187,10 +224,10 @@ router.post('/approve', async (req, res) => {
 })
 
 // ============================================
-// 管理侧：拒绝退款
+// 管理侧：拒绝退款（需鉴权）
 // ============================================
 // POST /api/refund/reject
-router.post('/reject', async (req, res) => {
+router.post('/reject', adminAuth, async (req, res) => {
   try {
     const { orderId, remark } = req.body
     const adminId = req.headers['x-user-id']
@@ -218,8 +255,8 @@ router.post('/reject', async (req, res) => {
       }
     }
 
-    // 更新退款状态为已拒绝
-    order.refundStatus = 'rejected'
+    // 更新退款状态为已拒绝，同时重置状态允许用户重新申请
+    order.refundStatus = 'none'
     order.refundProcessedAt = new Date()
     order.refundAdminId = adminId
     order.refundRemark = remark || '审核拒绝'

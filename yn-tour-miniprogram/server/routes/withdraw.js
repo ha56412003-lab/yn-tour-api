@@ -1,6 +1,7 @@
 // 提现相关API
 const express = require('express')
 const router = express.Router()
+const adminAuth = require('../middleware/adminAuth')
 const WithdrawService = require('../services/WithdrawService')
 
 // 用户申请提现
@@ -65,7 +66,7 @@ router.get('/detail', async (req, res) => {
 })
 
 // 管理后台 - 审核提现
-router.post('/approve', async (req, res) => {
+router.post('/approve', adminAuth, async (req, res) => {
   try {
     const { withdrawId, approved, rejectReason } = req.body
     
@@ -86,7 +87,7 @@ router.post('/approve', async (req, res) => {
 })
 
 // 管理后台 - 处理提现（打款）
-router.post('/process', async (req, res) => {
+router.post('/process', adminAuth, async (req, res) => {
   try {
     const { withdrawId } = req.body
     
@@ -107,7 +108,7 @@ router.post('/process', async (req, res) => {
 })
 
 // 管理后台 - 获取所有提现记录
-router.get('/admin-list', async (req, res) => {
+router.get('/admin-list', adminAuth, async (req, res) => {
   try {
     const { page = 1, limit = 20, status = 'all' } = req.query
     

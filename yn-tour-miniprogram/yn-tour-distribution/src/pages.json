@@ -1,4 +1,5 @@
 {
+	"lazyCodeInjection": true,
 	"pages": [
 		{
 			"path": "pages/home/home",
@@ -8,16 +9,9 @@
 			}
 		},
 		{
-			"path": "pages/cps/cps",
+			"path": "pages/user/user",
 			"style": {
-				"navigationBarTitleText": "CPS优惠",
-				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/join/join",
-			"style": {
-				"navigationBarTitleText": "加入团游",
+				"navigationBarTitleText": "个人中心",
 				"navigationStyle": "custom"
 			}
 		},
@@ -32,14 +26,6 @@
 			"path": "pages/help/help",
 			"style": {
 				"navigationBarTitleText": "帮助文档",
-				"navigationStyle": "custom"
-			}
-		},
-
-		{
-			"path": "pages/user/user",
-			"style": {
-				"navigationBarTitleText": "个人中心",
 				"navigationStyle": "custom"
 			}
 		},
@@ -62,76 +48,102 @@
 			}
 		},
 		{
-			"path": "pages/order/order",
-			"style": {
-				"navigationBarTitleText": "我的订单"
-			}
-		},
-		{
-			"path": "pages/commission/commission",
-			"style": {
-				"navigationBarTitleText": "佣金明细"
-			}
-		},
-		{
-			"path": "pages/settings/settings",
-			"style": {
-				"navigationBarTitleText": "设置"
-			}
-		},
-		{
-			"path": "pages/withdraw/withdraw",
-			"style": {
-				"navigationBarTitleText": "提现"
-			}
-		},
-		{
-			"path": "pages/import/import",
-			"style": {
-				"navigationBarTitleText": "导入成为分销商"
-			}
-		},
-		{
 			"path": "pages/webview/webview",
 			"style": {
 				"navigationBarTitleText": "正在加载"
 			}
+		}
+	],
+	"subPackages": [
+		{
+			"root": "pages/cps",
+			"pages": [
+				{
+					"path": "cps",
+					"style": {
+						"navigationBarTitleText": "CPS优惠",
+						"navigationStyle": "custom"
+					}
+				},
+				{
+					"path": "channels/hotel",
+					"style": {
+						"navigationBarTitleText": "酒店民宿"
+					}
+				},
+				{
+					"path": "channels/oil",
+					"style": {
+						"navigationBarTitleText": "加油优惠"
+					}
+				},
+				{
+					"path": "channels/meituan",
+					"style": {
+						"navigationBarTitleText": "美团外卖"
+					}
+				},
+				{
+					"path": "channels/elem",
+					"style": {
+						"navigationBarTitleText": "饿了么"
+					}
+				},
+				{
+					"path": "channels/movie",
+					"style": {
+						"navigationBarTitleText": "电影票"
+					}
+				},
+				{
+					"path": "channels/taxi",
+					"style": {
+						"navigationBarTitleText": "出行打车"
+					}
+				}
+			]
 		},
 		{
-			"path": "pages/cps/channels/hotel",
-			"style": {
-				"navigationBarTitleText": "酒店民宿"
-			}
-		},
-		{
-			"path": "pages/cps/channels/oil",
-			"style": {
-				"navigationBarTitleText": "加油优惠"
-			}
-		},
-		{
-			"path": "pages/cps/channels/meituan",
-			"style": {
-				"navigationBarTitleText": "美团外卖"
-			}
-		},
-		{
-			"path": "pages/cps/channels/elem",
-			"style": {
-				"navigationBarTitleText": "饿了么"
-			}
-		},
-		{
-			"path": "pages/cps/channels/movie",
-			"style": {
-				"navigationBarTitleText": "电影票"
-			}
-		},
-		{
-			"path": "pages/cps/channels/taxi",
-			"style": {
-				"navigationBarTitleText": "出行打车"
-			}
+			"root": "pages/distribution",
+			"pages": [
+				{
+					"path": "commission/commission",
+					"style": {
+						"navigationBarTitleText": "佣金明细"
+					}
+				},
+				{
+					"path": "settings/settings",
+					"style": {
+						"navigationBarTitleText": "设置"
+					}
+				},
+				{
+					"path": "withdraw/withdraw",
+					"style": {
+						"navigationBarTitleText": "提现"
+					}
+				},
+				{
+					"path": "import/import",
+					"style": {
+						"navigationBarTitleText": "导入成为分销商"
+					}
+				},
+				{
+					"path": "order/order",
+					"style": {
+						"navigationBarTitleText": "我的订单"
+					}
+				},
+				{
+					"path": "join/join",
+					"style": {
+						"navigationBarTitleText": "加入团游",
+						"navigationStyle": "custom"
+					}
+				}
+			]
 		}
 	],
 	"globalStyle": {
@@ -158,7 +170,6 @@
 				"selectedIconPath": "static/tab-help-active.png",
 				"text": "详细文档"
 			},
-
 			{
 				"pagePath": "pages/user/user",
 				"iconPath": "static/tab-user.png",

@@ -27,8 +27,8 @@ router.post('/create', async (req, res) => {
     // 生成订单号
     const orderNo = await Order.generateOrderNo()
     
-    // 计算订单金额
-    const totalAmount = product.price * quantity
+    // 计算订单金额（避免浮点数精度问题）
+    const totalAmount = Number((product.price * quantity).toFixed(2))
     
     // 创建订单
     const orderData = {
@@ -46,14 +46,33 @@ router.post('/create', async (req, res) => {
       'distribution.isSelfOrder': user.selfOrderNum === 0 // 如果是第一单，标记为自购单
     }
     
-    // 如果有推荐人，保存推荐人信息
+    // 如果有推荐人，保存推荐人信息（同时查找间推者grandParentId）
+    let grandParentId = null
     if (referrerId) {
       orderData['distribution.referrerId'] = referrerId
+      // 查找间推者（推荐人的上级）
+      const referrer = await User.findById(referrerId)
+      if (referrer && referrer.parentId) {
+        grandParentId = referrer.parentId
+        orderData['distribution.grandParentId'] = grandParentId
+      }
     } else if (user.parentId) {
       orderData['distribution.referrerId'] = user.parentId
+      // 查找间推者（推荐人的上级）
+      const referrer = await User.findById(user.parentId)
+      if (referrer && referrer.parentId) {
+        grandParentId = referrer.parentId
+        orderData['distribution.grandParentId'] = grandParentId
+      }
     } else if (user.isLocked && user.lockedBy) {
       orderData['distribution.referrerId'] = user.lockedBy
       orderData['distribution.isLockedOrder'] = true
+      // 查找间推者
+      const locker = await User.findById(user.lockedBy)
+      if (locker && locker.parentId) {
+        grandParentId = locker.parentId
+        orderData['distribution.grandParentId'] = grandParentId
+      }
     }
     
     const order = await Order.create(orderData)
@@ -95,32 +114,39 @@ router.post('/create-payment', async (req, res) => {
 })
 
 // 模拟支付成功（用于测试）
-router.post('/mock-pay', async (req, res) => {
-  try {
-    const { orderId, paymentMethod } = req.body
-    
-    const result = await PaymentService.mockPaymentSuccess(orderId, paymentMethod)
-    if (!result.success) {
-      return res.json({ code: 400, message: result.message })
+// ⚠️ 生产环境禁止调用此接口，建议在 Nginx/网关层直接屏蔽此路径
+if (process.env.NODE_ENV === 'production') {
+  router.post('/mock-pay', (req, res) => {
+    res.status(403).json({ code: 403, message: '测试接口，禁止在生产环境调用' })
+  })
+} else {
+  router.post('/mock-pay', async (req, res) => {
+    try {
+      const { orderId, paymentMethod } = req.body
+
+      const result = await PaymentService.mockPaymentSuccess(orderId, paymentMethod)
+      if (!result.success) {
+        return res.json({ code: 400, message: result.message })
+      }
+
+      // 支付成功后，计算分销佣金
+      await DistributionService.calculateCommission(orderId)
+
+      // 如果是用户第一次下单，自动锁客
+      const order = await Order.findById(orderId).populate('userId')
+      if (order && order.userId.selfOrderNum === 1 && order.distribution.referrerId) {
+        await DistributionService.lockUser(order.userId._id, order.distribution.referrerId)
+      }
+
+      res.json({
+        code: 200,
+        message: '支付成功'
+      })
+    } catch (err) {
+      res.json({ code: 500, message: err.message })
     }
-    
-    // 支付成功后，计算分销佣金
-    await DistributionService.calculateCommission(orderId)
-    
-    // 如果是用户第一次下单，自动锁客
-    const order = await Order.findById(orderId).populate('userId')
-    if (order && order.userId.selfOrderNum === 1 && order.distribution.referrerId) {
-      await DistributionService.lockUser(order.userId._id, order.distribution.referrerId)
-    }
-    
-    res.json({
-      code: 200,
-      message: '支付成功'
-    })
-  } catch (err) {
-    res.json({ code: 500, message: err.message })
-  }
-})
+  })
+}
 
 // 微信支付回调
 router.post('/wechat-callback', async (req, res) => {

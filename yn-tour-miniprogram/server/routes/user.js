@@ -4,6 +4,7 @@ const router = express.Router()
 const User = require('../models/User')
 const DistributionService = require('../services/DistributionService')
 const VisitRecord = require('../models/VisitRecord')
+const Background = require('../models/Background')
 const https = require('https')
 
 // 获取用户信息
@@ -217,104 +218,9 @@ router.get('/commission-list', async (req, res) => {
 // 获取团队排行榜
 router.get('/team-ranking', async (req, res) => {
   try {
-    const { limit = 10 } = req.query
-    const ranking = await DistributionService.getTeamRanking(parseInt(limit))
-    
-    res.json({
-      code: 200,
-      data: ranking
-    })
-  } catch (err) {
-    res.json({ code: 500, message: err.message })
-  }
-})
-
-// 每日签到
-router.post('/sign-in', async (req, res) => {
-  try {
-    const { userId } = req.body
-    const user = await User.findById(userId)
-    
-    if (!user) {
-      return res.json({ code: 404, message: '用户不存在' })
-    }
-    
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    if (user.lastSignInDate && new Date(user.lastSignInDate).toDateString() === today.toDateString()) {
-      return res.json({ code: 400, message: '今日已签到' })
-    }
-    
-    let reward = 0
-    const consecutiveDays = user.signInDays || 0
-    
-    if (consecutiveDays < 7) {
-      reward = 0.5
-    } else if (consecutiveDays < 14) {
-      reward = 1
-    } else if (consecutiveDays < 21) {
-      reward = 2
-    } else {
-      reward = 5
-    }
-    
-    user.signInDays = consecutiveDays + 1
-    user.lastSignInDate = new Date()
-    user.availableBalance = (user.availableBalance || 0) + reward
-    await user.save()
-    
-    const Commission = require('../models/Commission')
-    await Commission.create({
-      userId: user._id,
-      type: 'signIn',
-      amount: reward,
-      status: 'settled',
-      settledAt: new Date(),
-      description: `签到奖励 - 第${user.signInDays}天`
-    })
-    
-    res.json({
-      code: 200,
-      data: {
-        reward,
-        consecutiveDays: user.signInDays
-      }
-    })
-  } catch (err) {
-    res.json({ code: 500, message: err.message })
-  }
-})
-
-// 记录访问（用于有效访问奖）
-router.post('/record-visit', async (req, res) => {
-  try {
-    const { userId, visitorId, targetType, targetId, referrerId, ip, userAgent } = req.body
-    
-    const visitRecord = await VisitRecord.create({
-      userId,
-      visitorId,
-      targetType,
-      targetId,
-      referrerId,
-      isValid: true,
-      ip,
-      userAgent,
-      duration: 30
-    })
-    
-    let awardResult = null
-    if (referrerId) {
-      awardResult = await DistributionService.calculateValidVisitAward(referrerId, visitRecord)
-    }
-    
-    res.json({
-      code: 200,
-      data: {
-        visitRecord,
-        awardResult
-      }
-    })
+    const { limit = 10, period = 'all' } = req.query
+    const ranking = await DistributionService.getTeamRanking(parseInt(limit), period)
+    res.json({ code: 200, data: ranking })
   } catch (err) {
     res.json({ code: 500, message: err.message })
   }
@@ -577,12 +483,28 @@ router.get('/poster-image', async (req, res) => {
     const W = 540
     const H = 886
 
-    // 加载背景图
-    const bgDir = path.join(__dirname, '../uploads/backgrounds')
-    const bgFiles = fs.readdirSync(bgDir).filter(f => /\.(jpg|jpeg|png)$/i.test(f))
-    const bgFile = bgFiles[Math.floor(Math.random() * bgFiles.length)]
-    const bgPath = path.join(bgDir, bgFile)
-    const bgImage = await Jimp.read(bgPath)
+    // 加载背景图（优先从数据库随机选，fallback到文件系统）
+    let bgImage = null
+    try {
+      const enabledBgs = await Background.find({ status: 1 })
+      if (enabledBgs && enabledBgs.length > 0) {
+        const randomBg = enabledBgs[Math.floor(Math.random() * enabledBgs.length)]
+        const bgPath = path.join(__dirname, '..', randomBg.url.replace('/api', ''))
+        bgImage = await Jimp.read(bgPath)
+      } else {
+        // fallback到文件系统
+        const bgDir = path.join(__dirname, '../uploads/backgrounds')
+        const bgFiles = fs.readdirSync(bgDir).filter(f => /\.(jpg|jpeg|png)$/i.test(f))
+        if (bgFiles.length === 0) {
+          return res.json({ code: 500, message: '暂无背景图，请先上传' })
+        }
+        const bgFile = bgFiles[Math.floor(Math.random() * bgFiles.length)]
+        bgImage = await Jimp.read(path.join(bgDir, bgFile))
+      }
+    } catch (e) {
+      console.error('生成海报背景图失败:', e.message)
+      return res.json({ code: 500, message: '背景图加载失败，请联系管理员' })
+    }
     bgImage.resize({ w: W, h: H })
     const poster = bgImage
 

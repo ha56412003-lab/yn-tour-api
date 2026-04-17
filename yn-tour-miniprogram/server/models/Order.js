@@ -54,12 +54,20 @@ const orderSchema = new mongoose.Schema({
     isSelfOrder: { type: Boolean, default: false },
     // 推荐人（上级分销商）
     referrerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    // 间推者（推荐人的推荐人，用于计算间推分润10%）
+    grandParentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    // 订单是否有效（退款后变为false，不计入7人团点位）
+    isValid: { type: Boolean, default: true },
     // 是否锁客订单
     isLockedOrder: { type: Boolean, default: false },
     // 直推分润金额
     directProfit: { type: Number, default: 0 },
+    // 间推分润金额
+    indirectProfit: { type: Number, default: 0 },
     // 成团奖（如果有）
     groupBonus: { type: Number, default: 0 },
+    // 成团专项分红（该团总交易额×2%）
+    groupDividend: { type: Number, default: 0 },
     // 该订单对推荐人来说是第几单
     referrerOrderIndex: { type: Number, default: 0 }
   },

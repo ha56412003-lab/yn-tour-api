@@ -3,7 +3,8 @@ const express = require('express')
 const mongoose = require('mongoose')
 const cors = require('cors')
 const path = require('path')
-require('dotenv').config()
+const cron = require('node-cron')
+require('dotenv').config({ path: require('path').join(__dirname, '.env') })
 
 const userRoutes = require('./routes/user')
 const orderRoutes = require('./routes/order')
@@ -14,9 +15,11 @@ const importRoutes = require('./routes/import')
 const authRoutes = require('./routes/auth')
 const galleryRoutes = require('./routes/gallery')
 const homeConfigRoutes = require('./routes/homeConfig')
+const backgroundRoutes = require('./routes/background')
 const reviewRoutes = require('./routes/review')
 const refundRoutes = require('./routes/refund')
 const itineraryRoutes = require('./routes/itinerary')
+const announcementRoutes = require('./routes/announcement')
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -42,9 +45,12 @@ app.use('/api/import', importRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/gallery', galleryRoutes)
 app.use('/api/homeConfig', homeConfigRoutes)
+app.use('/api/background', backgroundRoutes)
 app.use('/api/review', reviewRoutes)
 app.use('/api/itinerary', itineraryRoutes)
 app.use('/api/refund', refundRoutes)
+app.use('/api/announcement', announcementRoutes)
+app.use('/api/admin/announcement', announcementRoutes)
 
 // 健康检查
 app.get('/health', (req, res) => {
@@ -117,6 +123,47 @@ async function initProducts() {
   
   console.log('📦 初始化商品数据完成')
 }
+
+/**
+ * 定时任务：每天凌晨 00:05 自动检查并释放满30天保护期的冻结佣金
+ * 防止用户长期不申请提现时，佣金永远卡在 frozenBalance
+ */
+async function runDailyCommissionRelease() {
+  try {
+    const User = require('./models/User')
+    const Commission = require('./models/Commission')
+    const DistributionService = require('./services/DistributionService')
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+
+    // 找出所有有冻结佣金且已过30天的用户
+    const overdueUsers = await Commission.aggregate([
+      { $match: { status: 'frozen', frozenAt: { $lte: thirtyDaysAgo } } },
+      { $group: { _id: '$userId' } }
+    ])
+
+    let totalReleased = 0
+    for (const { _id: userId } of overdueUsers) {
+      const result = await DistributionService.checkAndReleaseFrozenCommissions(userId)
+      totalReleased += result.released || 0
+    }
+
+    if (totalReleased > 0) {
+      console.log(`[佣金定时释放] 共释放 ${totalReleased} 笔佣金，涉及 ${overdueUsers.length} 位用户`)
+    }
+  } catch (err) {
+    console.error('[佣金定时释放] 执行失败:', err.message)
+  }
+}
+
+// 服务启动时立即执行一次（处理遗漏）
+runDailyCommissionRelease()
+
+// 每天凌晨 00:05 执行
+cron.schedule('5 0 * * *', () => {
+  console.log('[定时任务] 开始执行佣金自动释放检查...')
+  runDailyCommissionRelease()
+})
 
 // 启动服务
 app.listen(PORT, () => {

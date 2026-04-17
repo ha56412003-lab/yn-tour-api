@@ -1,5 +1,6 @@
 <template>
   <view class="container">
+    <AnnouncementPopup />
     <!-- 顶部Header -->
     <view class="header">
       <view class="header-top">
@@ -23,7 +24,7 @@
       <view class="hero-product" @click="goToProduct">
         <image
           class="product-img"
-          :src="homeConfig?.bannerImage ? fullUrl(homeConfig.bannerImage) : '/static/product-bg.png'"
+          :src="homeConfig?.bannerImage ? fullUrl(homeConfig.bannerImage) : '/static/product-bg.jpg'"
           mode="aspectFill"
         />
         <view class="product-tag">热卖</view>
@@ -111,7 +112,7 @@
             <text class="stat-tag"><text class="stat-label">团队</text>{{ (rankData[1].selfOrderNum || 0) + (rankData[1].directPushNum || 0) }}</text>
             <text class="stat-tag"><text class="stat-label">成团</text>{{ rankData[1].groupNum || 0 }}</text>
           </view>
-          <view class="top-earnings">提现¥{{ formatMoney(rankData[1].totalCommission || 0) }}</view>
+          <view class="top-earnings">可提现¥{{ formatMoney(rankData[1].totalEarnings || 0) }}</view>
         </view>
         <view class="top-item first" v-if="rankData[0]">
           <view class="rank-icon">🥇</view>
@@ -123,7 +124,7 @@
             <text class="stat-tag"><text class="stat-label">团队</text>{{ (rankData[0].selfOrderNum || 0) + (rankData[0].directPushNum || 0) }}</text>
             <text class="stat-tag"><text class="stat-label">成团</text>{{ rankData[0].groupNum || 0 }}</text>
           </view>
-          <view class="top-earnings">提现¥{{ formatMoney(rankData[0].totalCommission || 0) }}</view>
+          <view class="top-earnings">可提现¥{{ formatMoney(rankData[0].totalEarnings || 0) }}</view>
         </view>
         <view class="top-item third" v-if="rankData[2]">
           <view class="rank-icon">🥉</view>
@@ -135,7 +136,7 @@
             <text class="stat-tag"><text class="stat-label">团队</text>{{ (rankData[2].selfOrderNum || 0) + (rankData[2].directPushNum || 0) }}</text>
             <text class="stat-tag"><text class="stat-label">成团</text>{{ rankData[2].groupNum || 0 }}</text>
           </view>
-          <view class="top-earnings">提现¥{{ formatMoney(rankData[2].totalCommission || 0) }}</view>
+          <view class="top-earnings">可提现¥{{ formatMoney(rankData[2].totalEarnings || 0) }}</view>
         </view>
       </view>
       
@@ -153,7 +154,7 @@
               <text class="stat-tag"><text class="stat-label">成团</text>{{ item.groupNum || 0 }}</text>
             </view>
           </view>
-          <view class="rank-earnings">提现¥{{ formatMoney(item.totalCommission || 0) }}</view>
+          <view class="rank-earnings">可提现¥{{ formatMoney(item.totalEarnings || 0) }}</view>
         </view>
       </view>
       
@@ -191,6 +192,7 @@ import { onShow, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useUserStore } from '../../store/user'
 import { wxLoginAndBind, getTeamRanking } from '../../api/user'
 import { getHomeConfig } from '../../api/homeConfig'
+import AnnouncementPopup from '../../components/AnnouncementPopup.vue'
 
 const userStore = useUserStore()
 const timeType = ref('month')
@@ -212,6 +214,8 @@ const homeConfig = ref<HomeConfigType | null>(null)
 function fullUrl(path: string) {
   if (!path) return ''
   if (path.startsWith('http')) return path
+  // TODO: 部署前需改为实际域名，如 'https://your-domain.com'
+  // 当前为开发环境内网IP，线上需替换为真实服务器地址
   const base = 'http://192.168.10.14:3000'
   return path.startsWith('/') ? base + path : base + '/' + path
 }
@@ -311,7 +315,9 @@ const switchTime = (type) => {
 }
 
 const formatMoney = (money) => {
-  return money.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const num = parseFloat(money)
+  if (isNaN(num)) return '0'
+  return num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 const goToRanking = () => {

@@ -61,6 +61,7 @@ router.post('/save', async (req, res) => {
       if (linkedProductName !== undefined) config.linkedProductName = linkedProductName
       if (butlerPhones !== undefined) config.butlerPhones = butlerPhones
       if (butlerWechats !== undefined) config.butlerWechats = butlerWechats
+      if (officialAccountUrl !== undefined) config.officialAccountUrl = officialAccountUrl
       config.updatedAt = new Date()
       await config.save()
     } else {
@@ -70,7 +71,8 @@ router.post('/save', async (req, res) => {
         linkedProductId: linkedProductId || null,
         linkedProductName: linkedProductName || '',
         butlerPhones: butlerPhones || '',
-        butlerWechats: butlerWechats || ''
+        butlerWechats: butlerWechats || '',
+        officialAccountUrl: officialAccountUrl || ''
       })
     }
     res.json({ code: 200, data: config })
