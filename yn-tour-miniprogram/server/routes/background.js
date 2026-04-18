@@ -1,6 +1,7 @@
 // 海报背景图管理API
 const express = require('express')
 const router = express.Router()
+const adminAuth = require('../middleware/adminAuth')
 const Background = require('../models/Background')
 const multer = require('multer')
 const path = require('path')
@@ -42,7 +43,7 @@ router.get('/enabled', async (req, res) => {
 })
 
 // 上传背景图
-router.post('/upload', upload.single('image'), async (req, res) => {
+router.post('/upload', adminAuth, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.json({ code: 400, message: '请选择图片' })
@@ -85,7 +86,7 @@ router.post('/upload-batch', upload.array('images', 20), async (req, res) => {
 })
 
 // 更新背景图信息
-router.post('/update', async (req, res) => {
+router.post('/update', adminAuth, async (req, res) => {
   try {
     const { backgroundId, name, sort, status } = req.body
     const updates = {}
@@ -103,7 +104,7 @@ router.post('/update', async (req, res) => {
 })
 
 // 删除背景图
-router.post('/delete', async (req, res) => {
+router.post('/delete', adminAuth, async (req, res) => {
   try {
     const { backgroundId } = req.body
     const bg = await Background.findByIdAndDelete(backgroundId)
@@ -122,7 +123,7 @@ router.post('/delete', async (req, res) => {
 })
 
 // 批量删除
-router.post('/delete-batch', async (req, res) => {
+router.post('/delete-batch', adminAuth, async (req, res) => {
   try {
     const { ids } = req.body
     if (!ids || !Array.isArray(ids) || ids.length === 0) {

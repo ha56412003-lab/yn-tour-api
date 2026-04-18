@@ -1,22 +1,23 @@
 // 行程内容API（独立管理）
 const express = require('express')
 const router = express.Router()
+const adminAuth = require('../middleware/adminAuth')
 const Itinerary = require('../models/Itinerary')
 
-// 获取行程列表（管理后台用）
+// 获取行程列表
 router.get('/list', async (req, res) => {
   try {
     const { page = 1, limit = 20, status } = req.query
-    
+
     const query = status !== undefined ? { status: parseInt(status) } : {}
-    
+
     const list = await Itinerary.find(query)
       .sort({ sort: 1, createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
-    
+
     const total = await Itinerary.countDocuments(query)
-    
+
     res.json({
       code: 200,
       data: {
@@ -65,7 +66,7 @@ router.get('/all', async (req, res) => {
 })
 
 // 创建行程（管理员）
-router.post('/create', async (req, res) => {
+router.post('/create', adminAuth, async (req, res) => {
   try {
     const data = req.body
     const itinerary = await Itinerary.create({
@@ -79,7 +80,7 @@ router.post('/create', async (req, res) => {
 })
 
 // 更新行程（管理员）
-router.post('/update', async (req, res) => {
+router.post('/update', adminAuth, async (req, res) => {
   try {
     const { itineraryId, ...updates } = req.body
     updates.updatedAt = new Date()
@@ -101,7 +102,7 @@ router.post('/update', async (req, res) => {
 })
 
 // 删除行程（管理员）
-router.post('/delete', async (req, res) => {
+router.post('/delete', adminAuth, async (req, res) => {
   try {
     const { itineraryId } = req.body
     

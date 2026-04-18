@@ -1,10 +1,12 @@
 // 出行花絮评价管理API
 const express = require('express')
 const router = express.Router()
+const userAuth = require('../middleware/userAuth')
+const adminAuth = require('../middleware/adminAuth')
 const Review = require('../models/Review')
 
 // 获取评价列表（管理后台）
-router.get('/list', async (req, res) => {
+router.get('/list', adminAuth, async (req, res) => {
   try {
     const { page = 1, limit = 50, show } = req.query
     const query = {}
@@ -31,7 +33,7 @@ router.get('/public', async (req, res) => {
 })
 
 // 新增评价
-router.post('/create', async (req, res) => {
+router.post('/create', adminAuth, async (req, res) => {
   try {
     const { image, avatar, nickname, rating, content, show, sort } = req.body
     if (!image || !avatar || !nickname || !content) {
@@ -45,7 +47,7 @@ router.post('/create', async (req, res) => {
 })
 
 // 更新评价
-router.post('/update', async (req, res) => {
+router.post('/update', adminAuth, async (req, res) => {
   try {
     const { reviewId, image, avatar, nickname, rating, content, show, sort } = req.body
     if (!reviewId) return res.json({ code: 400, message: '缺少reviewId' })
@@ -62,7 +64,7 @@ router.post('/update', async (req, res) => {
 })
 
 // 删除评价
-router.post('/delete', async (req, res) => {
+router.post('/delete', adminAuth, async (req, res) => {
   try {
     const { reviewId } = req.body
     if (!reviewId) return res.json({ code: 400, message: '缺少reviewId' })

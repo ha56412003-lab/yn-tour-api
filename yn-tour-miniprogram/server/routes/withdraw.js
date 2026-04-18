@@ -2,12 +2,19 @@
 const express = require('express')
 const router = express.Router()
 const adminAuth = require('../middleware/adminAuth')
+const userAuth = require('../middleware/userAuth')
 const WithdrawService = require('../services/WithdrawService')
 
-// 用户申请提现
-router.post('/apply', async (req, res) => {
+// 用户申请提现（需要登录）
+router.post('/apply', userAuth, async (req, res) => {
   try {
-    const { userId, withdrawMethod, accountInfo, amount } = req.body
+    // 从 JWT token 获取用户ID，不再从 body 接收
+    const userId = req.headers['x-user-id']
+    const { withdrawMethod, accountInfo, amount } = req.body
+    
+    if (!userId) {
+      return res.json({ code: 401, message: '请先登录' })
+    }
     
     const result = await WithdrawService.applyWithdraw(userId, withdrawMethod, accountInfo, amount)
     
@@ -25,10 +32,16 @@ router.post('/apply', async (req, res) => {
   }
 })
 
-// 获取用户提现记录
-router.get('/list', async (req, res) => {
+// 获取当前用户的提现记录（需要登录）
+router.get('/list', userAuth, async (req, res) => {
   try {
-    const { userId, page = 1, limit = 20, status = 'all' } = req.query
+    // 从 JWT token 获取用户ID
+    const userId = req.headers['x-user-id']
+    const { page = 1, limit = 20, status = 'all' } = req.query
+    
+    if (!userId) {
+      return res.json({ code: 401, message: '请先登录' })
+    }
     
     const result = await WithdrawService.getUserWithdrawList(userId, parseInt(page), parseInt(limit), status)
     
@@ -45,12 +58,17 @@ router.get('/list', async (req, res) => {
   }
 })
 
-// 获取提现详情
-router.get('/detail', async (req, res) => {
+// 获取提现详情（需要登录，只能查看自己的）
+router.get('/detail', userAuth, async (req, res) => {
   try {
+    const userId = req.headers['x-user-id']
     const { withdrawId } = req.query
     
-    const result = await WithdrawService.getWithdrawDetail(withdrawId)
+    if (!userId) {
+      return res.json({ code: 401, message: '请先登录' })
+    }
+    
+    const result = await WithdrawService.getWithdrawDetail(withdrawId, userId)
     
     if (!result.success) {
       return res.json({ code: 400, message: result.message })
@@ -128,4 +146,3 @@ router.get('/admin-list', adminAuth, async (req, res) => {
 })
 
 module.exports = router
-

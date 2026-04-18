@@ -368,7 +368,7 @@ const goToProduct = () => {
     uni.navigateTo({ url: '/pages/product/product' })
   }
 }
-const goToRegister = () => uni.navigateTo({ url: '/pages/join/join' })
+const goToRegister = () => uni.navigateTo({ url: '/pages/distribution/join/join' })
 const goToShareTask = () => uni.navigateTo({ url: '/pages/share/share' })
 const goToLogin = () => uni.navigateTo({ url: '/pages/user/user' })
 

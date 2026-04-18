@@ -134,15 +134,6 @@
             </view>
           </view>
 
-          <!-- 直接开通（测试用） -->
-          <view class="section" style="background:#fff8e1;" @click="becomeDistributorDirectly">
-            <view style="text-align:center; padding:8rpx 0;">
-              <text style="font-size:26rpx;color:#f5a623;">🧪 快速测试通道：</text>
-              <text style="font-size:28rpx;font-weight:bold;color:#e67e22;display:block;">点此直接开通分销商</text>
-              <text style="font-size:20rpx;color:#999;">（测试账号专用，绕过后续购买流程）</text>
-            </view>
-          </view>
-
           <!-- 选择你的加入方式 -->
           <view class="section">
             <view class="section-title">
@@ -185,7 +176,7 @@ const goToProduct = () => {
 }
 
 const goToImport = () => {
-  uni.navigateTo({ url: '/pages/import/import' })
+  uni.navigateTo({ url: '/pages/distribution/import/import' })
 }
 
 // 直接开通（测试用）

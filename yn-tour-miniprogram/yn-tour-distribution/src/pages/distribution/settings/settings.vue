@@ -123,7 +123,7 @@ function handleDistributor() {
   if (userInfo.value.isDistributor) {
     uni.showToast({ title: '分销商信息展示开发中', icon: 'none' })
   } else {
-    uni.navigateTo({ url: '/pages/join/join' })
+    uni.navigateTo({ url: '/pages/distribution/join/join' })
   }
 }
 

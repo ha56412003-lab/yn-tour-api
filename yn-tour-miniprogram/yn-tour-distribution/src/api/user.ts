@@ -25,6 +25,12 @@ export interface UserInfo {
   parentId?: string
 }
 
+// 登录响应（后端返回 { user, token }）
+export interface LoginResponse {
+  user: UserInfo
+  token: string
+}
+
 /**
  * 微信小程序登录
  * 1. 调用 wx.login() 获取 code
@@ -47,7 +53,7 @@ export async function wxLoginAndBind(): Promise<UserInfo> {
     throw new Error('微信登录失败，未获取到 code')
   }
   
-  const res = await post<UserInfo>('/user/wx-login', {
+  const res = await post<LoginResponse>('/user/wx-login', {
     code: loginRes.code,
     nickname: '微信用户',
     avatar: '',
@@ -58,7 +64,7 @@ export async function wxLoginAndBind(): Promise<UserInfo> {
   // #ifndef MP-WEIXIN
   // 非小程序环境，用模拟 openid
   const mockOpenid = 'mock_openid_' + Date.now()
-  const res = await post<UserInfo>('/user/wx-login', {
+  const res = await post<LoginResponse>('/user/wx-login', {
     code: mockOpenid,
     nickname: '游客用户',
     avatar: '',
@@ -68,15 +74,16 @@ export async function wxLoginAndBind(): Promise<UserInfo> {
   
   if (res.data) {
     userStore.setUser({
-      userId: res.data._id,
-      openid: res.data.openid,
-      nickname: res.data.nickname,
-      avatar: res.data.avatar,
-      isDistributor: res.data.isDistributor
+      userId: res.data.user._id,
+      openid: res.data.user.openid,
+      nickname: res.data.user.nickname,
+      avatar: res.data.user.avatar,
+      isDistributor: res.data.user.isDistributor,
+      token: res.data.token
     })
   }
   
-  return res.data
+  return res.data?.user
 }
 
 // 获取用户信息
@@ -86,6 +93,7 @@ export function getUserInfo(params?: { openid?: string; userId?: string }) {
 
 // 获取当前登录用户信息（自动用全局 userId）
 export function getCurrentUserInfo() {
+  console.log('[DEBUG getCurrentUserInfo] userId from store:', userState.userId)
   return get<UserInfo>('/user/info', { userId: userState.userId })
 }
 
@@ -216,12 +224,17 @@ export interface PhoneLoginResponse {
 }
 
 // 手机号+验证码登录
+export interface PhoneLoginResult {
+  user: PhoneLoginResponse
+  token: string
+}
+
 export function phoneLogin(params: {
   phone: string
   code: string
   referrerId?: string
 }) {
-  return post<PhoneLoginResponse>('/auth/phone-login', params)
+  return post<PhoneLoginResult>('/auth/phone-login', params)
 }
 
 // 绑定手机号（已登录用户）

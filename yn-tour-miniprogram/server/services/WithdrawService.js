@@ -234,11 +234,16 @@ class WithdrawService {
   /**
    * 获取提现详情
    */
-  static async getWithdrawDetail(withdrawId) {
+  static async getWithdrawDetail(withdrawId, userId) {
     try {
-      const withdraw = await Withdraw.findById(withdrawId).populate('userId', 'nickname avatar')
+      const withdraw = await Withdraw.findById(withdrawId).populate('userId', 'nickname avatar phone')
       if (!withdraw) {
         return { success: false, message: '提现记录不存在' }
+      }
+
+      // 验证是否是本人的提现记录
+      if (withdraw.userId && withdraw.userId._id.toString() !== userId) {
+        return { success: false, message: '无权查看此提现记录' }
       }
 
       return {

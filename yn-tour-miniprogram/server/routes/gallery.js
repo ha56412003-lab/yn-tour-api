@@ -1,6 +1,7 @@
 // 产品素材/花絮图片管理API
 const express = require('express')
 const router = express.Router()
+const adminAuth = require('../middleware/adminAuth')
 const Gallery = require('../models/Gallery')
 const multer = require('multer')
 const path = require('path')
@@ -65,7 +66,7 @@ router.get('/by-category', async (req, res) => {
 })
 
 // 上传素材图片
-router.post('/upload', upload.single('image'), async (req, res) => {
+router.post('/upload', adminAuth, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.json({ code: 400, message: '请选择图片' })
@@ -116,7 +117,7 @@ router.post('/upload-batch', upload.array('images', 20), async (req, res) => {
 })
 
 // 更新素材信息
-router.post('/update', async (req, res) => {
+router.post('/update', adminAuth, async (req, res) => {
   try {
     const { galleryId, category, title, location, scene, sort, status } = req.body
     const updates = { updatedAt: new Date() }
@@ -137,7 +138,7 @@ router.post('/update', async (req, res) => {
 })
 
 // 删除素材
-router.post('/delete', async (req, res) => {
+router.post('/delete', adminAuth, async (req, res) => {
   try {
     const { galleryId } = req.body
     const gallery = await Gallery.findByIdAndDelete(galleryId)
@@ -156,7 +157,7 @@ router.post('/delete', async (req, res) => {
 })
 
 // 批量删除素材
-router.post('/delete-batch', async (req, res) => {
+router.post('/delete-batch', adminAuth, async (req, res) => {
   try {
     const { ids } = req.body
     if (!ids || !Array.isArray(ids) || ids.length === 0) {

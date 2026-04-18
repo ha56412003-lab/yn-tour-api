@@ -1,5 +1,6 @@
 const express = require('express')
 const router = express.Router()
+const adminAuth = require('../middleware/adminAuth')
 const Announcement = require('../models/Announcement')
 
 // ========== 小程序端接口 ==========
@@ -60,7 +61,7 @@ router.get('/list', async (req, res) => {
 })
 
 // POST /api/admin/announcement/create - 新建
-router.post('/create', async (req, res) => {
+router.post('/create', adminAuth, async (req, res) => {
   try {
     const { title, content, type, status, showStart, showEnd, bgColor, textColor, priority } = req.body
     const announcement = await Announcement.create({
@@ -82,7 +83,7 @@ router.post('/create', async (req, res) => {
 })
 
 // POST /api/admin/announcement/update - 更新
-router.post('/update', async (req, res) => {
+router.post('/update', adminAuth, async (req, res) => {
   try {
     const { id, title, content, type, status, showStart, showEnd, bgColor, textColor, priority } = req.body
     const updateData = {
@@ -106,7 +107,7 @@ router.post('/update', async (req, res) => {
 })
 
 // DELETE /api/admin/announcement/:id - 删除
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuth, async (req, res) => {
   try {
     await Announcement.findByIdAndDelete(req.params.id)
     res.json({ code: 200, message: '删除成功', data: null })

@@ -90,8 +90,8 @@ router.post('/login', async (req, res) => {
         openid,
         nickname: nickname || '用户',
         avatar: avatar || '',
-        isDistributor: true, // 测试阶段：新用户默认开通分销商
-        distributorLevel: 1
+        isDistributor: false, // 新用户默认不开通分销商，需要通过购买或导入订单开通
+        distributorLevel: 0
       })
       
       const bindParentId = parentId || referrerId
@@ -102,7 +102,10 @@ router.post('/login', async (req, res) => {
     
     res.json({
       code: 200,
-      data: user
+      data: {
+        user,
+        token: signToken(user._id.toString())
+      }
     })
   } catch (err) {
     res.json({ code: 500, message: err.message })
@@ -141,7 +144,9 @@ router.post('/wx-login', async (req, res) => {
       user = await User.create({
         openid,
         nickname: nickname || '微信用户',
-        avatar: avatar || ''
+        avatar: avatar || '',
+        isDistributor: false, // 新用户默认不开通分销商，需要通过购买或导入订单开通
+        distributorLevel: 0
       })
       
       if (referrerId) {
@@ -566,3 +571,84 @@ router.get('/poster-image', userAuth, async (req, res) => {
 })
 
 module.exports = router
+
+// 测试用：手机号直接登录（跳过验证码）
+router.post('/test-phone-login', async (req, res) => {
+  try {
+    const { phone, isDistributor } = req.body
+    if (!phone) {
+      return res.json({ code: 400, message: '手机号不能为空' })
+    }
+    
+    // 仅允许测试手机号
+    if (!['13900000001', '13900000002', '13900000003'].includes(phone)) {
+      return res.json({ code: 403, message: '仅允许测试手机号' })
+    }
+    
+    // isDistributor参数：true=分销商, false=普通用户, 不传默认true
+    const setAsDistributor = isDistributor === undefined ? true : isDistributor
+    
+    let user = await User.findOneAndUpdate(
+      { phone },
+      { 
+        $set: { 
+          isDistributor: setAsDistributor,
+          distributorLevel: setAsDistributor ? 1 : 0,
+          status: 1
+        }
+      },
+      { new: true, upsert: true, runValidators: true }
+    )
+    
+    // 如果是新建用户，设置初始值
+    if (!user.openid) {
+      user.openid = 'test_' + phone
+      user.nickname = '测试用户' + phone.slice(-4)
+      await user.save()
+    }
+    
+    res.json({
+      code: 200,
+      data: {
+        user,
+        token: signToken(user._id.toString())
+      }
+    })
+  } catch (err) {
+    res.json({ code: 500, message: err.message })
+  }
+})
+
+// 调试接口：切换用户的分销商状态（仅测试用，生产环境禁止）
+// 建议在 Nginx 层屏蔽此路径
+router.post('/debug-toggle-distributor', async (req, res) => {
+  // 禁止在生产环境调用
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ code: 403, message: '测试接口，禁止在生产环境调用' })
+  }
+  
+  try {
+    const { phone, isDistributor } = req.body
+    if (!phone) {
+      return res.json({ code: 400, message: '手机号不能为空' })
+    }
+    
+    const user = await User.findOneAndUpdate(
+      { phone },
+      { isDistributor: !!isDistributor },
+      { new: true }
+    )
+    
+    if (!user) {
+      return res.json({ code: 404, message: '用户不存在' })
+    }
+    
+    res.json({
+      code: 200,
+      message: `已将 ${phone} 的分销商状态设置为: ${!!isDistributor}`,
+      data: { phone: user.phone, openid: user.openid, isDistributor: user.isDistributor }
+    })
+  } catch (err) {
+    res.json({ code: 500, message: err.message })
+  }
+})

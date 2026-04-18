@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const adminAuth = require('../middleware/adminAuth')
+const userAuth = require('../middleware/userAuth')
 const Order = require('../models/Order')
 const DistributionService = require('../services/DistributionService')
 const User = require('../models/User')
@@ -9,7 +10,7 @@ const User = require('../models/User')
 // 用户侧：申请退款
 // ============================================
 // POST /api/refund/apply
-router.post('/apply', async (req, res) => {
+router.post('/apply', userAuth, async (req, res) => {
   try {
     const { orderId, reason } = req.body
     const userId = req.headers['x-user-id']
@@ -66,7 +67,7 @@ router.post('/apply', async (req, res) => {
 // 用户侧：我的退款列表
 // ============================================
 // GET /api/refund/my-list
-router.get('/my-list', async (req, res) => {
+router.get('/my-list', userAuth, async (req, res) => {
   try {
     const userId = req.headers['x-user-id']
     const { page = 1, limit = 10 } = req.query

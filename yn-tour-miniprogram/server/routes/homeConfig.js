@@ -1,6 +1,7 @@
 // 首页装修配置API
 const express = require('express')
 const router = express.Router()
+const adminAuth = require('../middleware/adminAuth')
 const HomeConfig = require('../models/HomeConfig')
 const Product = require('../models/Product')
 
@@ -48,7 +49,7 @@ router.get('/list', async (req, res) => {
 })
 
 // 保存/更新首页配置
-router.post('/save', async (req, res) => {
+router.post('/save', adminAuth, async (req, res) => {
   try {
     const { bannerImage, linkedProductId, linkedProductName, butlerPhones, butlerWechats } = req.body
 
@@ -82,7 +83,7 @@ router.post('/save', async (req, res) => {
 })
 
 // 删除配置
-router.post('/delete', async (req, res) => {
+router.post('/delete', adminAuth, async (req, res) => {
   try {
     const { configId } = req.body
     if (!configId) return res.json({ code: 400, message: '缺少configId' })

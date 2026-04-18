@@ -3,6 +3,7 @@ const express = require('express')
 const router = express.Router()
 const adminAuth = require('../middleware/adminAuth')
 const AdminService = require('../services/AdminService')
+const DistributionService = require('../services/DistributionService')
 const Order = require('../models/Order')
 const User = require('../models/User')
 
@@ -282,6 +283,24 @@ router.post('/user/freeze', async (req, res) => {
       return res.json({ code: 400, message: result.message })
     }
     res.json({ code: 200, message: result.message })
+  } catch (err) {
+    res.json({ code: 500, message: err.message })
+  }
+})
+
+// 手动触发平台月度分红
+router.get('/dividend-trigger', adminAuth, async (req, res) => {
+  try {
+    const { year, month } = req.query
+    const now = new Date()
+    const targetYear = parseInt(year) || now.getFullYear()
+    const targetMonth = parseInt(month) || (now.getMonth() + 1)
+    
+    const result = await DistributionService.calculateDividend(targetMonth, targetYear)
+    res.json({
+      code: 200,
+      data: result
+    })
   } catch (err) {
     res.json({ code: 500, message: err.message })
   }

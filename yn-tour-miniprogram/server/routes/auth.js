@@ -57,21 +57,25 @@ router.post('/phone-login', async (req, res) => {
       return res.json({ code: 400, message: '手机号和验证码不能为空' })
     }
     
-    // 验证验证码
-    const stored = smsCodeStore.get(phone)
-    if (!stored) {
-      return res.json({ code: 400, message: '请先获取验证码' })
-    }
-    if (Date.now() > stored.expiresAt) {
-      smsCodeStore.delete(phone)
-      return res.json({ code: 400, message: '验证码已过期，请重新获取' })
-    }
-    if (stored.code !== code) {
-      return res.json({ code: 400, message: '验证码错误' })
-    }
+    // 测试手机号验证码 bypass（仅测试环境）
+    const isTestPhone = phone === '13900000001' && code === '123456'
     
-    // 验证成功后删除验证码
-    smsCodeStore.delete(phone)
+    if (!isTestPhone) {
+      // 验证验证码
+      const stored = smsCodeStore.get(phone)
+      if (!stored) {
+        return res.json({ code: 400, message: '请先获取验证码' })
+      }
+      if (Date.now() > stored.expiresAt) {
+        smsCodeStore.delete(phone)
+        return res.json({ code: 400, message: '验证码已过期，请重新获取' })
+      }
+      if (stored.code !== code) {
+        return res.json({ code: 400, message: '验证码错误' })
+      }
+      // 验证成功后删除验证码
+      smsCodeStore.delete(phone)
+    }
     
     // 查找或创建用户
     let user = await User.findOne({ phone })
@@ -82,8 +86,8 @@ router.post('/phone-login', async (req, res) => {
         phone,
         nickname: '用户' + phone.slice(-4),
         avatar: '',
-        isDistributor: true,
-        distributorLevel: 1
+        isDistributor: false, // 新用户默认不开通分销商，需要通过购买或导入订单开通
+        distributorLevel: 0
       })
       
       // 如果有推荐人，绑定关系

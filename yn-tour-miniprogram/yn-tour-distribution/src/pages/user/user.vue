@@ -115,7 +115,7 @@
         <view class="open-item">• 永久团队分红</view>
       </view>
       <view class="open-action">
-        <button class="open-btn" @click="openDistributor">立即开通 ¥799</button>
+        <button class="open-btn" @click="openDistributor">立即开通</button>
       </view>
       <view class="open-alt" @click="goToImport">已有订单?导入订单免费开通</view>
     </view>
@@ -371,6 +371,11 @@ onShow(async () => {
 
 async function loadUserData() {
   try {
+    // 未登录不调接口
+    if (!userStore.state.userId) {
+      console.log('[DEBUG] loadUserData skipped: userId is undefined')
+      return
+    }
     // 获取用户信息
     const userRes = await getCurrentUserInfo()
     if (userRes.code === 200 && userRes.data) {
@@ -526,15 +531,18 @@ async function confirmPhoneLogin() {
         referrerId: userStore.state.referrerId || undefined
       })
       if (res.code === 200 && res.data) {
-        userInfo.value = res.data
+        console.log('[DEBUG] phoneLogin success, userId:', res.data.user._id)
+        userInfo.value = res.data.user
         userStore.setUser({
-          userId: res.data._id,
-          openid: res.data.openid,
-          nickname: res.data.nickname,
-          avatar: res.data.avatar,
-          phone: res.data.phone,
-          isDistributor: res.data.isDistributor
+          userId: res.data.user._id,
+          openid: res.data.user.openid,
+          nickname: res.data.user.nickname,
+          avatar: res.data.user.avatar,
+          phone: res.data.user.phone,
+          isDistributor: res.data.user.isDistributor,
+          token: res.data.token
         })
+        console.log('[DEBUG] after setUser, isLoggedIn:', userStore.state.isLoggedIn, 'userId:', userStore.state.userId)
         await loadUserData()
         showLoginModal.value = false
         uni.showToast({ title: '登录成功', icon: 'success' })
@@ -572,7 +580,8 @@ function openDistributor() {
     showLoginModal.value = true
     return
   }
-  showOpenModal.value = true
+  // 跳转到申请分销商介绍页，让用户选择"购买旅游卡"或"导入订单"
+  uni.navigateTo({ url: '/pages/distribution/join/join' })
 }
 
 async function confirmPay() {

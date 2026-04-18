@@ -25,7 +25,7 @@
           <view class="tip-icon-large">🎁</view>
           <view class="tip-title">仅限分销商使用</view>
           <view class="tip-text">成为分销商后，即可生成专属推广海报和链接，锁客30天下单永久绑定，享受两级分销收益。</view>
-          <button class="btn-primary" @click="goToJoin">立即申请开通</button>
+          <button class="btn-primary" hover-class="none" @click="goToJoin">立即申请开通</button>
         </view>
       </view>
     </view>
@@ -178,12 +178,13 @@ ${url}`
 
 // 去登录
 function goToLogin() {
-  uni.navigateTo({ url: '/pages/login/login' })
+  uni.switchTab({ url: '/pages/user/user' })
 }
 
 // 去申请分销商
 function goToJoin() {
-  uni.navigateTo({ url: '/pages/join/join' })
+  console.log('[分享] 点击申请开通按钮, isDistributor:', userStore.state.isDistributor)
+  uni.navigateTo({ url: '/pages/distribution/join/join' })
 }
 
 // 返回
@@ -245,29 +246,20 @@ async function generatePoster() {
     const userId = userStore.state.userId
     console.log('[海报] 请求后端生成海报, userId:', userId)
     
-    const res = await new Promise((resolve, reject) => {
-      uni.request({
-        url: `${BASE_URL}/user/poster-image`,
-        method: 'GET',
-        data: { userId },
-        timeout: 15000,
-        success: (r) => resolve(r),
-        fail: (err) => reject(err)
-      })
-    })
+    const res = await get('/user/poster-image', { userId })
     
-    console.log('[海报] 后端响应:', res.data)
+    console.log('[海报] 后端响应:', res)
     
-    if (res.data.code === 200 && res.data.data.posterUrl) {
+    if (res.code === 200 && res.data.posterUrl) {
       // 拼接完整URL
-      const posterFullUrl = res.data.data.posterUrl.startsWith('http')
-        ? res.data.data.posterUrl
-        : BASE_URL + res.data.data.posterUrl
+      const posterFullUrl = res.data.posterUrl.startsWith('http')
+        ? res.data.posterUrl
+        : BASE_URL + res.data.posterUrl
       console.log('[海报] 海报生成成功:', posterFullUrl)
       posterUrl.value = posterFullUrl
       uni.showToast({ title: '海报生成成功', icon: 'none' })
     } else {
-      throw new Error(res.data.message || '海报生成失败')
+      throw new Error(res.message || '海报生成失败')
     }
   } catch (e) {
     console.error('[海报] 生成失败:', e)

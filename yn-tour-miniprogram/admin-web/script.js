@@ -1,5 +1,19 @@
 // 改为相对路径，自动适配当前 host（开发/生产均可用）
 const API_BASE = '/api';
+const ADMIN_TOKEN = 'cbc3d79ebcd491002d69011f1c9352a8e5de03a066f8b748124ce1d2d8d7d350';
+
+// 带认证的 fetch 封装
+async function authFetch(url, options = {}) {
+  const headers = {
+    ...options.headers,
+    'x-admin-token': ADMIN_TOKEN
+  };
+  // FormData 上传时不设置 Content-Type，让浏览器自动处理
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return fetch(url, { ...options, headers });
+}
 
 // 当前状态
 let currentPage = 'dashboard';
@@ -157,7 +171,7 @@ function switchPage(page) {
 // 加载数据看板
 async function loadDashboard() {
   try {
-    const res = await fetch(`${API_BASE}/admin/dashboard`);
+    const res = await authFetch(`${API_BASE}/admin/dashboard`);
     const result = await res.json();
     
     if (result.code === 200) {
@@ -190,7 +204,7 @@ async function loadUsers() {
       keyword: userSearchKeyword
     });
     
-    const res = await fetch(`${API_BASE}/admin/users?${params}`);
+    const res = await authFetch(`${API_BASE}/admin/users?${params}`);
     const result = await res.json();
     
     if (result.code === 200) {
@@ -266,7 +280,7 @@ async function viewUserDetail(userId) {
   content.innerHTML = '<div class="loading">加载中...</div>';
   
   try {
-    const res = await fetch(`${API_BASE}/admin/user-detail?userId=${userId}`);
+    const res = await authFetch(`${API_BASE}/admin/user-detail?userId=${userId}`);
     const result = await res.json();
     
     if (result.code === 200) {
@@ -384,7 +398,7 @@ function closeUserDetailModal() {
 async function freezeUser(userId, freeze) {
   if (!confirm(freeze ? '确定要冻结该用户吗？冻结后用户将无法使用小程序。' : '确定要解冻该用户吗？')) return;
   try {
-    const res = await fetch(`${API_BASE}/admin/user/freeze`, {
+    const res = await authFetch(`${API_BASE}/admin/user/freeze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, freeze })
@@ -410,7 +424,7 @@ async function loadOrders() {
       status: orderStatusFilter
     });
     
-    const res = await fetch(`${API_BASE}/admin/orders?${params}`);
+    const res = await authFetch(`${API_BASE}/admin/orders?${params}`);
     const result = await res.json();
     
     if (result.code === 200) {
@@ -573,7 +587,7 @@ async function submitImportExpress() {
   btn.disabled = true
   btn.textContent = '导入中...'
   try {
-    const res = await fetch(`${API_BASE}/admin/orders/import`, {
+    const res = await authFetch(`${API_BASE}/admin/orders/import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ orders })
@@ -605,7 +619,7 @@ async function viewOrderDetail(orderId) {
   content.innerHTML = '<div class="loading">加载中...</div>';
   
   try {
-    const res = await fetch(`${API_BASE}/order/detail?orderId=${orderId}`);
+    const res = await authFetch(`${API_BASE}/order/detail?orderId=${orderId}`);
     const result = await res.json();
     
     if (result.code === 200) {
@@ -728,7 +742,7 @@ function openShipModal(orderId) {
   modal.classList.add('active');
   
   // 加载订单收货地址信息
-  fetch(`${API_BASE}/order/detail?orderId=${orderId}`)
+  authFetch(`${API_BASE}/order/detail?orderId=${orderId}`)
     .then(res => res.json())
     .then(result => {
       if (result.code === 200) {
@@ -755,7 +769,7 @@ async function submitShip() {
   }
   
   try {
-    const res = await fetch(`${API_BASE}/order/ship`, {
+    const res = await authFetch(`${API_BASE}/order/ship`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ orderId, expressCompany, expressNo })
@@ -798,7 +812,7 @@ async function loadRevenueStats() {
       endDate
     });
     
-    const res = await fetch(`${API_BASE}/admin/revenue-stats?${params}`);
+    const res = await authFetch(`${API_BASE}/admin/revenue-stats?${params}`);
     const result = await res.json();
     
     if (result.code === 200) {
@@ -831,7 +845,7 @@ async function loadWithdraws() {
       status: withdrawStatusFilter
     });
     
-    const res = await fetch(`${API_BASE}/withdraw/admin-list?${params}`);
+    const res = await authFetch(`${API_BASE}/withdraw/admin-list?${params}`);
     const result = await res.json();
     
     if (result.code === 200) {
@@ -928,7 +942,7 @@ async function submitWithdrawAudit() {
   const reviewResult = document.getElementById('withdraw-review-result').value;
   const rejectReason = document.getElementById('withdraw-reject-reason').value;
   try {
-    const res = await fetch(`${API_BASE}/withdraw/approve`, {
+    const res = await authFetch(`${API_BASE}/withdraw/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -996,7 +1010,7 @@ async function loadImports() {
       status: importStatusFilter
     });
     
-    const res = await fetch(`${API_BASE}/import/list?${params}`);
+    const res = await authFetch(`${API_BASE}/import/list?${params}`);
     const result = await res.json();
     
     if (result.code === 200) {
@@ -1056,7 +1070,7 @@ async function approveImport(id) {
   if (!confirm('确认通过审核？该用户将成为分销商。')) return;
   
   try {
-    const res = await fetch(`${API_BASE}/import/approve`, {
+    const res = await authFetch(`${API_BASE}/import/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id })
@@ -1081,7 +1095,7 @@ async function rejectImport(id) {
 async function viewImportDetail(id) {
   try {
     // 重新拉取最新数据
-    const res = await fetch(`${API_BASE}/import/list?status=all&page=1&limit=200`);
+    const res = await authFetch(`${API_BASE}/import/list?status=all&page=1&limit=200`);
     const result = await res.json();
     
     if (result.code !== 200) {
@@ -1190,7 +1204,7 @@ async function submitImportReject() {
   }
   
   try {
-    const res = await fetch(`${API_BASE}/import/reject`, {
+    const res = await authFetch(`${API_BASE}/import/reject`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, reviewRemark: reason })
@@ -1220,7 +1234,7 @@ let detailImageUrls = [];  // 产品详情图数组
 
 async function loadProducts() {
   try {
-    const res = await fetch(`${API_BASE}/product/all`);
+    const res = await authFetch(`${API_BASE}/product/all`);
     const result = await res.json();
     
     if (result.code === 200) {
@@ -1245,7 +1259,7 @@ function renderProductsTable(products) {
     <tr>
       <td>
         <div style="display:flex;align-items:center;gap:10px;">
-          ${product.images && product.images[0] ? `<img src="${product.images[0]}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">` : '<div style="width:50px;height:50px;background:#f0f0f0;border-radius:4px;display:flex;align-items:center;justify-content:center;">无图</div>'}
+          ${(product.mainImages?.length || product.images?.length) ? `<img src="${product.mainImages?.[0] || product.images?.[0]}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">` : '<div style="width:50px;height:50px;background:#f0f0f0;border-radius:4px;display:flex;align-items:center;justify-content:center;">无图</div>'}
           <div>
             <div style="font-weight:500;">${product.name}</div>
             <div style="font-size:12px;color:#999;">${product.subtitle || '-'}</div>
@@ -1297,7 +1311,7 @@ function renderMockProducts() {
 // ========== 产品关联行程 ==========
 async function loadItineraryOptions() {
   try {
-    const res = await fetch(`${API_BASE}/itinerary/all`);
+    const res = await authFetch(`${API_BASE}/itinerary/all`);
     const result = await res.json();
     const select = document.getElementById('product-itinerary-select');
     select.innerHTML = '<option value="">-- 不关联行程库 --</option>';
@@ -1321,7 +1335,7 @@ async function loadItineraryToProduct() {
     return;
   }
   try {
-    const res = await fetch(`${API_BASE}/itinerary/detail?itineraryId=${itineraryId}`);
+    const res = await authFetch(`${API_BASE}/itinerary/detail?itineraryId=${itineraryId}`);
     const result = await res.json();
     if (result.code === 200) {
       const it = result.data;
@@ -1410,7 +1424,7 @@ function openProductModal(productId) {
 
 async function loadProductDetail(productId) {
   try {
-    const res = await fetch(`${API_BASE}/product/detail?productId=${productId}`);
+    const res = await authFetch(`${API_BASE}/product/detail?productId=${productId}`);
     const result = await res.json();
     
     if (result.code === 200) {
@@ -1481,7 +1495,7 @@ async function toggleProductStatus(productId) {
   if (!confirm('确认切换产品上下架状态？')) return;
   
   try {
-    const res = await fetch(`${API_BASE}/product/toggle-status`, {
+    const res = await authFetch(`${API_BASE}/product/toggle-status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ productId })
@@ -1581,7 +1595,7 @@ async function uploadImage(file) {
   const formData = new FormData();
   formData.append('image', file);
   try {
-    const res = await fetch(`${API_BASE}/product/upload-image`, { method: 'POST', body: formData });
+    const res = await authFetch(`${API_BASE}/product/upload-image`, { method: 'POST', body: formData });
     const result = await res.json();
     if (result.code === 200) return result.data.url;
     alert('上传失败: ' + result.message);
@@ -1655,7 +1669,7 @@ async function submitProduct() {
   if (productId) data.productId = productId;
   
   try {
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -1761,7 +1775,7 @@ let editingReviewId = null;
 async function loadReviewList() {
   const showFilter = document.getElementById('review-show-filter')?.value;
   try {
-    const res = await fetch(`${API_BASE}/review/list?limit=100${showFilter ? '&show=' + showFilter : ''}`);
+    const res = await authFetch(`${API_BASE}/review/list?limit=100${showFilter ? '&show=' + showFilter : ''}`);
     const result = await res.json();
     if (result.code === 200) {
       reviewList = result.data.list || [];
@@ -1884,13 +1898,13 @@ async function submitReview() {
   try {
     let res, result;
     if (editingReviewId) {
-      res = await fetch(`${API_BASE}/review/update`, {
+      res = await authFetch(`${API_BASE}/review/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reviewId: editingReviewId, ...data })
       });
     } else {
-      res = await fetch(`${API_BASE}/review/create`, {
+      res = await authFetch(`${API_BASE}/review/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -1914,7 +1928,7 @@ function editReview(reviewId) { openReviewModal(reviewId); }
 async function deleteReview(reviewId) {
   if (!confirm('确认删除这条评价？')) return;
   try {
-    const res = await fetch(`${API_BASE}/review/delete`, {
+    const res = await authFetch(`${API_BASE}/review/delete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reviewId })
@@ -1933,7 +1947,7 @@ async function deleteReview(reviewId) {
 
 async function toggleReviewShow(reviewId, show) {
   try {
-    await fetch(`${API_BASE}/review/update`, {
+    await authFetch(`${API_BASE}/review/update`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reviewId, show })
@@ -1976,7 +1990,7 @@ async function loadHomeDecorate() {
   await loadDecorateProductList();
   // 加载已有配置
   try {
-    const res = await fetch(`${API_BASE}/homeConfig/get`);
+    const res = await authFetch(`${API_BASE}/homeConfig/get`);
     const result = await res.json();
     if (result.code === 200 && result.data) {
       document.getElementById('decorate-banner-url').value = result.data.bannerImage || '';
@@ -1995,7 +2009,7 @@ async function loadHomeDecorate() {
 
 async function loadDecorateProductList() {
   try {
-    const res = await fetch(`${API_BASE}/homeConfig/products`);
+    const res = await authFetch(`${API_BASE}/homeConfig/products`);
     const result = await res.json();
     if (result.code === 200) {
       decorateProducts = result.data || [];
@@ -2047,7 +2061,7 @@ async function saveHomeDecorate() {
   const butlerWechats = document.getElementById('decorate-butler-wechats').value.trim();
   const officialAccountUrl = document.getElementById('decorate-official-account-url').value.trim();
   try {
-    const res = await fetch(`${API_BASE}/homeConfig/save`, {
+    const res = await authFetch(`${API_BASE}/homeConfig/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ bannerImage, linkedProductId: productId || null, linkedProductName: productName, butlerPhones, butlerWechats, officialAccountUrl })
@@ -2083,7 +2097,7 @@ document.getElementById('decorate-banner-url')?.addEventListener('input', functi
 // ========== 海报背景管理 ==========
 async function loadBackgroundList() {
   try {
-    const res = await fetch('/api/background/list');
+    const res = await authFetch('/api/background/list');
     const json = await res.json();
     const list = json.data || [];
     const container = document.getElementById('background-list');
@@ -2122,7 +2136,7 @@ function handleBgUpload(event) {
   if (file.size > 5 * 1024 * 1024) { alert('图片不超过5MB'); return; }
   const formData = new FormData();
   formData.append('image', file);
-  fetch('/api/background/upload', { method: 'POST', body: formData })
+  authFetch('/api/background/upload', { method: 'POST', body: formData })
     .then(r => r.json())
     .then(data => {
       if (data.code === 200) {
@@ -2138,7 +2152,7 @@ function handleBgUpload(event) {
 
 async function toggleBgStatus(id, status) {
   try {
-    const res = await fetch('/api/background/update', {
+    const res = await authFetch('/api/background/update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, status })
@@ -2152,7 +2166,7 @@ async function toggleBgStatus(id, status) {
 async function updateBgSort(id) {
   const sort = document.getElementById('bg-sort-' + id).value;
   try {
-    const res = await fetch('/api/background/update', {
+    const res = await authFetch('/api/background/update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, sort: parseInt(sort) || 0 })
@@ -2166,7 +2180,7 @@ async function updateBgSort(id) {
 async function deleteBackground(id) {
   if (!confirm('确定删除这张背景图？')) return;
   try {
-    const res = await fetch('/api/background/delete', {
+    const res = await authFetch('/api/background/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id })
@@ -2205,7 +2219,7 @@ const DEFAULT_ITINERARY_NOTICES = [
 
 async function loadItineraryList() {
   try {
-    const res = await fetch(`${API_BASE}/itinerary/all`);
+    const res = await authFetch(`${API_BASE}/itinerary/all`);
     const result = await res.json();
     if (result.code === 200) {
       renderItineraryTable(result.data);
@@ -2284,7 +2298,7 @@ function editItinerary(itineraryId) {
 
 async function loadItineraryDetail(itineraryId) {
   try {
-    const res = await fetch(`${API_BASE}/itinerary/detail?itineraryId=${itineraryId}`);
+    const res = await authFetch(`${API_BASE}/itinerary/detail?itineraryId=${itineraryId}`);
     const result = await res.json();
     if (result.code === 200) {
       const it = result.data;
@@ -2438,7 +2452,7 @@ async function submitItinerary() {
   const body = itineraryId ? { itineraryId, ...data } : data;
 
   try {
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -2459,7 +2473,7 @@ async function submitItinerary() {
 async function deleteItinerary(itineraryId) {
   if (!confirm('确认删除该行程？删除后不可恢复')) return;
   try {
-    const res = await fetch(`${API_BASE}/itinerary/delete`, {
+    const res = await authFetch(`${API_BASE}/itinerary/delete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ itineraryId })
@@ -2493,7 +2507,7 @@ async function loadRefundList() {
   tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:40px;">加载中...</td></tr>';
   
   try {
-    const res = await fetch(`${API_BASE}/refund/admin-list?page=${refundPage}&limit=20&status=${status}`);
+    const res = await authFetch(`${API_BASE}/refund/admin-list?page=${refundPage}&limit=20&status=${status}`);
     const result = await res.json();
     
     if (result.code === 200 || result.success) {
@@ -2554,7 +2568,7 @@ async function handleRefundApprove(orderId) {
   if (!confirm('确认通过退款申请？退款成功后佣金将自动追回。')) return;
   
   try {
-    const res = await fetch(`${API_BASE}/refund/approve`, {
+    const res = await authFetch(`${API_BASE}/refund/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ orderId })
@@ -2575,7 +2589,7 @@ async function handleRefundReject(orderId) {
   const remark = prompt('请输入拒绝原因（选填）：');
   
   try {
-    const res = await fetch(`${API_BASE}/refund/reject`, {
+    const res = await authFetch(`${API_BASE}/refund/reject`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ orderId, remark })
@@ -2611,7 +2625,7 @@ async function loadAnnouncementList(page = 1) {
   try {
     const params = new URLSearchParams({ page, pageSize: 10 });
     if (keyword) params.append('keyword', keyword);
-    const res = await fetch(`${API_BASE}/admin/announcement/list?${params}`);
+    const res = await authFetch(`${API_BASE}/admin/announcement/list?${params}`);
     const result = await res.json();
     if (result.code === 200) {
       renderAnnouncementTable(result.data?.list || []);
@@ -2686,7 +2700,7 @@ function closeAnnouncementModal() {
 
 async function editAnnouncement(id) {
   try {
-    const res = await fetch(`${API_BASE}/admin/announcement/list?page=1&pageSize=100`);
+    const res = await authFetch(`${API_BASE}/admin/announcement/list?page=1&pageSize=100`);
     const result = await res.json();
     if (result.code === 200) {
       const item = (result.data?.list || []).find(a => a._id === id);
@@ -2733,7 +2747,7 @@ async function saveAnnouncement() {
   const body = id ? { ...payload, id } : payload;
 
   try {
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -2752,7 +2766,7 @@ async function saveAnnouncement() {
 async function deleteAnnouncement(id) {
   if (!confirm('确定删除该公告？')) return;
   try {
-    const res = await fetch(`${API_BASE}/admin/announcement/${id}`, { method: 'DELETE' });
+    const res = await authFetch(`${API_BASE}/admin/announcement/${id}`, { method: 'DELETE' });
     const result = await res.json();
     alert(result.message || (result.code === 200 ? '删除成功' : '删除失败'));
     if (result.code === 200) loadAnnouncementList(announcementPage);

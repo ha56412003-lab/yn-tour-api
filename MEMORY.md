@@ -114,3 +114,34 @@ use `memory_recall` + filesystem search to avoid patching the wrong repo.
 After modifying ANY `.ts` file under `plugins/`, MUST run `rm -rf /tmp/jiti/` BEFORE `openclaw gateway restart`.
 jiti caches compiled TS; restart alone loads STALE code. This has caused silent bugs multiple times.
 Config-only changes do NOT need cache clearing.
+
+## UniApp + 微信小程序开发经验（2026-04-18沉淀）
+
+### 微信小程序质量扫描通过要点
+1. **图片总大小 ≤ 200KB**（用 `sips` 压缩）
+2. **JS压缩**：`manifest.json` + `vite.config.ts` 配置好即可
+3. **组件懒加载**：`manifest.json` → `mp-weixin.setting.lazyCodeLoading: "requiredComponents"`
+4. **缓存清理**：修改配置后必须 `rm -rf dist` 重新编译
+
+### 图片压缩命令（macOS）
+```bash
+sips -s format jpeg -s formatOptions 50 --resampleHeight 300 input.jpg --out output.jpg
+```
+
+### 重建编译标准流程
+```bash
+cd yn-tour-distribution
+rm -rf dist
+npm run build:mp-weixin
+# 微信开发者工具重新导入 dist/build/mp-weixin
+```
+
+### 调试用户状态
+直接MongoDB修改：`User.findOneAndUpdate({phone}, {isDistributor: false})`
+或添加后端调试接口 `POST /user/debug-toggle-distributor`
+
+### 项目路径
+`~/.openclaw/workspace-fengxi/yn-tour-miniprogram/`
+- `server/` - Node.js后端
+- `yn-tour-distribution/` - UniApp小程序前端
+

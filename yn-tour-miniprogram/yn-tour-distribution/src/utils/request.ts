@@ -39,9 +39,12 @@ export function request<T = any>(options: RequestOptions): Promise<ResponseData<
       ...options.header
     }
     
-    // 自动附带 userId（除登录课外）
+    // 自动附带 userId 和 token（除登录课外）
     if (!options.noAuth && userState.userId) {
       headers['X-User-Id'] = userState.userId
+      if (userState.token) {
+        headers['X-User-Token'] = userState.token
+      }
     }
     
     uni.request({

@@ -1,6 +1,7 @@
 // 商品相关API
 const express = require('express')
 const router = express.Router()
+const adminAuth = require('../middleware/adminAuth')
 const Product = require('../models/Product')
 const multer = require('multer')
 const path = require('path')
@@ -101,7 +102,7 @@ router.get('/all', async (req, res) => {
 })
 
 // 创建商品（管理员）
-router.post('/create', async (req, res) => {
+router.post('/create', adminAuth, async (req, res) => {
   try {
     const data = req.body
     const product = await Product.create({
@@ -115,7 +116,7 @@ router.post('/create', async (req, res) => {
 })
 
 // 更新商品（管理员）
-router.post('/update', async (req, res) => {
+router.post('/update', adminAuth, async (req, res) => {
   try {
     const { productId, ...updates } = req.body
     updates.updatedAt = new Date()
@@ -137,7 +138,7 @@ router.post('/update', async (req, res) => {
 })
 
 // 删除商品（管理员）
-router.post('/delete', async (req, res) => {
+router.post('/delete', adminAuth, async (req, res) => {
   try {
     const { productId } = req.body
     
@@ -154,7 +155,7 @@ router.post('/delete', async (req, res) => {
 })
 
 // 上下架切换（管理员）
-router.post('/toggle-status', async (req, res) => {
+router.post('/toggle-status', adminAuth, async (req, res) => {
   try {
     const { productId } = req.body
     
@@ -174,7 +175,7 @@ router.post('/toggle-status', async (req, res) => {
 })
 
 // 上传商品图片
-router.post('/upload-image', upload.single('image'), async (req, res) => {
+router.post('/upload-image', adminAuth, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.json({ code: 400, message: '请选择图片' })

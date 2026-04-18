@@ -420,7 +420,7 @@ import { BASE_URL } from '../../utils/request'
 // 完整URL
 function fullUrl(path: string) {
   if (!path) return ''
-  if (path.startsWith('http')) return path
+  if (path.startsWith('http') || path.startsWith('data:')) return path
   return BASE_URL + path
 }
 
@@ -589,8 +589,8 @@ async function loadReviews() {
 .highlight-key { color: #0891b2; font-weight: bold; }
 
 /* 总结区块专用高亮（深色背景用） */
-.summary-money { color: #ff8f9b; font-weight: bold; }
-.summary-key { color: #ffd700; font-weight: bold; }
+.summary-money { color: #ffe066; font-weight: bold; text-shadow: 0 1rpx 2rpx rgba(0,0,0,0.2); }
+.summary-key { color: #ffffff; font-weight: bold; text-shadow: 0 1rpx 3rpx rgba(0,0,0,0.3); }
 
 /* 文档通用文字 */
 .doc-intro { font-size: 26rpx; color: #555; line-height: 1.9; margin-bottom: 30rpx; background: #fff; padding: 24rpx; border-radius: 16rpx; border-left: 8rpx solid #4facfe; }

@@ -10,6 +10,7 @@ interface UserState {
   phone: string
   referrerId: string  // 从分享链接进入时的上级ID
   isDistributor: boolean
+  token: string  // JWT token，用于需要登录态的 API 请求
 }
 
 const STATE_KEY = 'yn_user_state'
@@ -28,7 +29,8 @@ const loadState = (): UserState => {
     avatar: '',
     phone: '',
     referrerId: '',
-    isDistributor: false
+    isDistributor: false,
+    token: ''
   }
 }
 
@@ -44,10 +46,18 @@ const saveState = () => {
 
 // 设置登录状态
 const setUser = (user: Partial<UserState>) => {
-  Object.assign(state, user)
-  if (user.userId) {
-    state.isLoggedIn = true
-  }
+  console.log('[DEBUG setUser] called, userId:', user.userId, 'token:', user.token ? 'present' : 'none')
+  // 直接赋值每个字段，避免 Object.assign 在 readonly proxy 下的响应性问题
+  if (user.userId !== undefined) state.userId = user.userId
+  if (user.openid !== undefined) state.openid = user.openid
+  if (user.nickname !== undefined) state.nickname = user.nickname
+  if (user.avatar !== undefined) state.avatar = user.avatar
+  if (user.phone !== undefined) state.phone = user.phone
+  if (user.isDistributor !== undefined) state.isDistributor = user.isDistributor
+  if (user.referrerId !== undefined) state.referrerId = user.referrerId
+  if (user.token !== undefined) state.token = user.token
+  if (user.userId) state.isLoggedIn = true
+  console.log('[DEBUG setUser] after, userId:', state.userId, 'token:', state.token ? 'present' : 'none')
   saveState()
 }
 
@@ -72,6 +82,7 @@ const logout = () => {
   state.avatar = ''
   state.phone = ''
   state.isDistributor = false
+  state.token = ''
   saveState()
 }
 

@@ -3,10 +3,10 @@
 		<!-- 图片轮播 - 主图 -->
 		<swiper class="swiper" indicator-dots autoplay circular>
 			<swiper-item v-for="(img, idx) in (productData?.mainImages?.length ? productData.mainImages : ['/static/product1.jpg'])" :key="idx">
-				<image :src="fullImageUrl(img)" mode="aspectFill" />
+				<image :src="fullImageUrl(img)" mode="widthFix" />
 			</swiper-item>
 			<swiper-item v-if="!productData?.mainImages?.length">
-				<image src="/static/product1.jpg" mode="aspectFill" />
+				<image src="/static/product1.jpg" mode="widthFix" />
 			</swiper-item>
 		</swiper>
 
@@ -86,7 +86,8 @@
 				<view class="step-arrow">→</view>
 				<view class="step">
 					<view class="step-num">2</view>
-					<view class="step-text">拨打卡上预约电话</view>
+					<view class="step-text">扫卡片上的二维码
+添加专属管家预约出行</view>
 				</view>
 				<view class="step-arrow">→</view>
 				<view class="step">
@@ -205,8 +206,9 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useUserStore } from '../../store/user'
-import { getProductDetail } from '../../api/product'
+import { getProductDetail, getProductList } from '../../api/product'
 import { createOrder } from '../../api/order'
+import { BASE_URL } from '../../utils/request'
 
 const userStore = useUserStore()
 
@@ -237,13 +239,26 @@ const displayPrice = computed(() => {
 function fullImageUrl(path) {
   if (!path) return '/static/product1.jpg'
   if (path.startsWith('http')) return path
-  return path
+  const base = 'http://192.168.10.14:3000'
+  return path.startsWith('/') ? base + path : base + '/' + path
 }
 
-onLoad((options) => {
+onLoad(async (options) => {
   if (options?.productId) {
     currentProductId.value = options.productId
     loadProductDetail(options.productId)
+  } else {
+    // 未传 productId，则自动获取第一个商品
+    try {
+      const res = await getProductList({ limit: 1, status: 1 })
+      if (res.code === 200 && res.data.list.length > 0) {
+        const firstProduct = res.data.list[0]
+        currentProductId.value = firstProduct._id
+        loadProductDetail(firstProduct._id)
+      }
+    } catch (e) {
+      console.error('加载商品失败', e)
+    }
   }
 })
 
@@ -368,7 +383,7 @@ const doPay = async (payMethod) => {
 async function mockPay(data: { orderId: string; paymentMethod: string }) {
   return new Promise((resolve) => {
     uni.request({
-      url: 'http://localhost:3000/api/order/mock-pay',
+      url: BASE_URL + '/order/mock-pay',
       method: 'POST',
       data,
       success: (res: any) => resolve(res.data),
@@ -380,16 +395,17 @@ async function mockPay(data: { orderId: string; paymentMethod: string }) {
 
 <style lang="scss">
 .product {
-	padding-bottom: 120rpx;
+	padding-bottom: 220rpx;
 	background: #f5f5f5;
 }
 
 .swiper {
-	height: 500rpx;
+	width: 750rpx;
+	height: 750rpx;
+	overflow: hidden;
 }
 .swiper image {
 	width: 100%;
-	height: 100%;
 }
 
 .price-section {
@@ -531,34 +547,39 @@ async function mockPay(data: { orderId: string; paymentMethod: string }) {
 	align-items: center;
 	justify-content: space-between;
 	padding: 20rpx 0;
+	overflow: hidden;
 }
 .step {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	flex: 1;
+	min-width: 0;
 }
 .step-num {
-	width: 60rpx;
-	height: 60rpx;
-	line-height: 60rpx;
+	width: 56rpx;
+	height: 56rpx;
+	line-height: 56rpx;
 	background: linear-gradient(135deg, #ff6600, #ff8c00);
 	color: #fff;
-	font-size: 28rpx;
+	font-size: 26rpx;
 	font-weight: bold;
 	border-radius: 50%;
 	text-align: center;
-	margin-bottom: 10rpx;
+	margin-bottom: 8rpx;
+	flex-shrink: 0;
 }
 .step-text {
-	font-size: 22rpx;
+	font-size: 20rpx;
 	color: #666;
 	text-align: center;
+	word-break: break-all;
 }
 .step-arrow {
-	font-size: 32rpx;
+	font-size: 28rpx;
 	color: #ccc;
-	padding: 0 10rpx;
+	padding: 0 6rpx;
+	flex-shrink: 0;
 }
 
 .bottom-action {

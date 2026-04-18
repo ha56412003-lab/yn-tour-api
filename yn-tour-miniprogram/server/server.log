@@ -7,3 +7,50 @@
    - 管理: /api/admin/*
 ✅ MongoDB 连接成功
 📦 商品数据已存在，跳过初始化
+[短信] 13900000001 的验证码: 293712
+[短信] 13900000001 的验证码: 582709
+PayloadTooLargeError: request entity too large
+    at readStream (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/raw-body/index.js:163:17)
+    at getRawBody (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/raw-body/index.js:116:12)
+    at read (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/body-parser/lib/read.js:79:3)
+    at jsonParser (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/body-parser/lib/types/json.js:138:5)
+    at Layer.handle [as handle_request] (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:328:13)
+    at /Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:286:9
+    at router.process_params (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:346:12)
+    at next (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:280:10)
+    at cors (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/cors/lib/index.js:188:7)
+PayloadTooLargeError: request entity too large
+    at readStream (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/raw-body/index.js:163:17)
+    at getRawBody (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/raw-body/index.js:116:12)
+    at read (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/body-parser/lib/read.js:79:3)
+    at jsonParser (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/body-parser/lib/types/json.js:138:5)
+    at Layer.handle [as handle_request] (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:328:13)
+    at /Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:286:9
+    at router.process_params (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:346:12)
+    at next (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:280:10)
+    at cors (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/cors/lib/index.js:188:7)
+PayloadTooLargeError: request entity too large
+    at readStream (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/raw-body/index.js:163:17)
+    at getRawBody (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/raw-body/index.js:116:12)
+    at read (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/body-parser/lib/read.js:79:3)
+    at jsonParser (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/body-parser/lib/types/json.js:138:5)
+    at Layer.handle [as handle_request] (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:328:13)
+    at /Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:286:9
+    at router.process_params (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:346:12)
+    at next (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:280:10)
+    at cors (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/cors/lib/index.js:188:7)
+PayloadTooLargeError: request entity too large
+    at readStream (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/raw-body/index.js:163:17)
+    at getRawBody (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/raw-body/index.js:116:12)
+    at read (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/body-parser/lib/read.js:79:3)
+    at jsonParser (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/body-parser/lib/types/json.js:138:5)
+    at Layer.handle [as handle_request] (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:328:13)
+    at /Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:286:9
+    at router.process_params (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:346:12)
+    at next (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/express/lib/router/index.js:280:10)
+    at cors (/Users/tiaotiao/.openclaw/workspace-fengxi/yn-tour-miniprogram/server/node_modules/cors/lib/index.js:188:7)
+[短信] 13900000001 的验证码: 591579

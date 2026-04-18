@@ -65,14 +65,15 @@ async function autoLogin(openid: string) {
       avatar: '',
       referrerId: userState.referrerId || undefined
     })
-    if (res.data) {
+    if (res.data && res.data.user) {
       const userStore = useUserStore()
       userStore.setUser({
-        userId: res.data._id,
-        openid: res.data.openid,
-        nickname: res.data.nickname,
-        avatar: res.data.avatar,
-        isDistributor: res.data.isDistributor
+        userId: res.data.user._id,
+        openid: res.data.user.openid,
+        nickname: res.data.user.nickname,
+        avatar: res.data.user.avatar,
+        isDistributor: res.data.user.isDistributor,
+        token: res.data.token
       })
     }
   } catch (e) {

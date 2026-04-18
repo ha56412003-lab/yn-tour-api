@@ -109,3 +109,36 @@ export function getMyRefundList(params: { page?: number; limit?: number }) {
     pagination: { page: number; limit: number; total: number; pages: number }
   }>('/refund/my-list', params)
 }
+
+// ============================================
+// 导入审核相关
+// ============================================
+
+export interface ImportSubmitParams {
+  userId?: string
+  phone: string
+  nickname?: string
+  importOrderNo: string
+  importSource?: string
+}
+
+export interface ImportSubmitResponse {
+  id: string
+}
+
+// 提交导入申请
+export function submitImport(data: ImportSubmitParams) {
+  return post<ImportSubmitResponse>('/import/submit', data)
+}
+
+// 查询导入审核状态
+export function getImportStatus(params: { userId?: string; phone?: string }) {
+  return get<{
+    _id: string
+    status: 'pending' | 'approved' | 'rejected'
+    phone: string
+    importOrderNo: string
+    importSource: string
+    createdAt: string
+  }>('/import/status', params)
+}
